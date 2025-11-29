@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+blood_group_env/
+*.egg-info/
+dist/
+build/
+
+# Flask
+instance/
+.webassets-cache
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# Model files (if too large, consider using Git LFS)
+# *.h5
+# *.keras
+# *.pkl
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+requirements_temp.txt
+
+# Data folders (too large for git)
+data/
+dataset_folder/
+
+# PowerPoint and documents
+*.pptx
+*.docx
+*.pdf
+
