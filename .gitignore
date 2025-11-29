@@ -46,12 +46,12 @@ logs/
 *.tmp
 requirements_temp.txt
 
-# Data folders (too large for git)
-data/
-dataset_folder/
+# Data folders - now included in repository
+# data/
+# dataset_folder/
 
-# PowerPoint and documents
-*.pptx
+# PowerPoint and documents - allow specific files
+# *.pptx
 *.docx
 # Allow PDF files (documentation)
 # *.pdf
