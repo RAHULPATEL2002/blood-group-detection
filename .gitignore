@@ -21,8 +21,10 @@ uploads/*
 !uploads/.gitkeep
 
 # Model files (if too large, consider using Git LFS)
-# *.h5
+*.h5
+# Keep .keras files (needed for deployment)
 # *.keras
+# Keep .pkl files (needed for deployment)
 # *.pkl
 
 # IDE
@@ -51,5 +53,6 @@ dataset_folder/
 # PowerPoint and documents
 *.pptx
 *.docx
-*.pdf
+# Allow PDF files (documentation)
+# *.pdf
 
