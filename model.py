@@ -22,8 +22,8 @@ test_dir = 'data/test'
 
 # Hyperparameters
 input_shape = (128, 128, 3)
-batch_size = 16
-epochs = 25
+batch_size = 32
+epochs = 50
 fine_tune_at = -2  # Unfreeze last 2 layers
 learning_rate = 1e-4  # Increased for better adaptation
 

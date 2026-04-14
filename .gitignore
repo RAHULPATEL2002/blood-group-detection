@@ -19,6 +19,8 @@ instance/
 # Uploads
 uploads/*
 !uploads/.gitkeep
+static/uploads/*
+!static/uploads/.gitkeep
 
 # Model files (if too large, consider using Git LFS)
 *.h5
@@ -55,4 +57,3 @@ requirements_temp.txt
 *.docx
 # Allow PDF files (documentation)
 # *.pdf
-

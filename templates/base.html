@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Infrared Blood Group AI{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-shell">
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark">
+                    <span>IR</span>
+                </div>
+                <div>
+                    <strong>Infrared Blood Group AI</strong>
+                    <small>Hand image screening experience</small>
+                </div>
+            </div>
+            <div class="status-pill {{ 'status-ready' if model_ready else 'status-offline' }}">
+                <span class="status-dot"></span>
+                {{ "Model Ready" if model_ready else "Model Offline" }}
+            </div>
+        </header>
+
+        {% if model_error %}
+            <div class="alert alert-warning">
+                <strong>Model Warning:</strong> {{ model_error }}
+            </div>
+        {% endif %}
+
+        {% if error_message %}
+            <div class="alert alert-error">
+                <strong>Action needed:</strong> {{ error_message }}
+            </div>
+        {% endif %}
+
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="footer">
+            <div>
+                <strong>Clinical note:</strong> This tool supports research and education only. Always confirm blood group with laboratory testing.
+            </div>
+            <small>© {{ current_year if current_year else "2026" }} Infrared Blood Group AI. All rights reserved.</small>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
