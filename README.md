@@ -1,5 +1,6 @@
 # Infrared Blood Group Detection
 
+
 Infrared Blood Group Detection is a Flask web app that classifies blood groups from infrared hand images using a VGG16-based deep learning model. The UI is mobile-first, supports camera capture, and returns confidence-ranked predictions in seconds.
 
 ## Features
