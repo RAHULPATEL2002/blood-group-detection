@@ -1,59 +1,363 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Result — {{ blood_type }} — BloodSense AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    :root {
+      --bg-deep:#04070f; --bg-card:#080d1a; --bg-glass:rgba(12,20,40,0.85);
+      --red:#e63946; --red-glow:rgba(230,57,70,0.35); --red-dim:#8b1a22;
+      --teal:#00d4aa; --teal-glow:rgba(0,212,170,0.25);
+      --gold:#ffd166; --text-main:#e8eaf2; --text-muted:#7a85a0;
+      --border:rgba(230,57,70,0.18); --border-teal:rgba(0,212,170,0.2);
+      --font-head:'Rajdhani',sans-serif; --font-body:'Exo 2',sans-serif; --font-mono:'JetBrains Mono',monospace;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg-deep);color:var(--text-main);font-family:var(--font-body);min-height:100vh;overflow-x:hidden;}
+    body::before{
+      content:'';position:fixed;inset:0;z-index:0;
+      background:radial-gradient(ellipse 80% 60% at 20% 20%,rgba(230,57,70,0.1) 0%,transparent 60%),
+                 radial-gradient(ellipse 60% 50% at 80% 80%,rgba(0,212,170,0.06) 0%,transparent 60%);
+      pointer-events:none;
+    }
+    body::after{
+      content:'';position:fixed;inset:0;z-index:0;
+      background-image:linear-gradient(rgba(230,57,70,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(230,57,70,0.03) 1px,transparent 1px);
+      background-size:60px 60px;pointer-events:none;
+    }
+    nav{
+      position:sticky;top:0;z-index:100;
+      display:flex;align-items:center;justify-content:space-between;
+      padding:0 2.5rem;height:70px;
+      background:rgba(4,7,15,0.92);backdrop-filter:blur(20px);
+      border-bottom:1px solid var(--border);
+    }
+    .nav-brand{display:flex;align-items:center;gap:.75rem;font-family:var(--font-head);font-size:1.5rem;font-weight:700;text-decoration:none;color:var(--text-main);}
+    .drop{width:32px;height:32px;background:var(--red);clip-path:polygon(50% 0%,100% 65%,80% 100%,20% 100%,0% 65%);animation:pulse-drop 2s ease-in-out infinite;box-shadow:0 0 20px var(--red-glow);}
+    @keyframes pulse-drop{0%,100%{box-shadow:0 0 15px var(--red-glow);}50%{box-shadow:0 0 35px rgba(230,57,70,0.6);}}
+    .nav-links{display:flex;gap:.5rem;}
+    .nav-links a{padding:.45rem 1rem;text-decoration:none;color:var(--text-muted);font-family:var(--font-head);font-size:.95rem;font-weight:600;letter-spacing:.05em;border-radius:6px;transition:all .2s;}
+    .nav-links a:hover{color:var(--red);background:rgba(230,57,70,.08);}
 
-{% block title %}Infrared Blood Group AI | Result{% endblock %}
+    /* ── Result hero ── */
+    .result-hero{
+      position:relative;z-index:1;
+      padding:4rem 2rem 2rem;text-align:center;
+    }
+    .patient-pill{
+      display:inline-flex;align-items:center;gap:.6rem;
+      background:rgba(0,212,170,.08);border:1px solid var(--border-teal);
+      border-radius:20px;padding:.4rem 1.2rem;
+      font-family:var(--font-mono);font-size:.78rem;color:var(--teal);
+      margin-bottom:1.5rem;letter-spacing:.06em;
+      animation:fade-in-down .5s ease both;
+    }
+    @keyframes fade-in-down{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fade-in-up  {from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fade-in     {from{opacity:0}to{opacity:1}}
 
-{% block content %}
-<section class="result-hero">
-    <div>
-        <span class="eyebrow">Prediction complete</span>
-        <h1>{{ blood_type }} blood group detected</h1>
-        <p class="muted-text">Temperature recorded: {{ temperature }}&deg;C</p>
+    .blood-type-display{
+      position:relative;display:inline-block;
+      margin:1.5rem auto;
+      animation:blood-enter 0.8s 0.2s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    @keyframes blood-enter{from{opacity:0;transform:scale(.4) rotate(-10deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+
+    .blood-drop-bg{
+      width:160px;height:200px;
+      background:linear-gradient(135deg,var(--red),#8b1a22);
+      clip-path:polygon(50% 0%,100% 55%,100% 80%,80% 100%,20% 100%,0% 80%,0% 55%);
+      display:flex;align-items:center;justify-content:center;
+      margin:0 auto;
+      box-shadow:0 0 80px rgba(230,57,70,.5),0 0 160px rgba(230,57,70,.2);
+      position:relative;
+    }
+    .blood-drop-bg::after{
+      content:'';position:absolute;top:15px;left:30px;
+      width:30px;height:20px;
+      background:rgba(255,255,255,.15);
+      border-radius:50%;transform:rotate(-30deg);
+    }
+    .blood-type-text{
+      font-family:var(--font-head);font-size:3.5rem;font-weight:700;
+      color:#fff;text-shadow:0 2px 20px rgba(0,0,0,.4);
+      position:relative;z-index:1;
+    }
+    .result-name{font-family:var(--font-head);font-size:2rem;font-weight:700;margin-bottom:.4rem;animation:fade-in-up .6s .4s ease both;}
+    .result-sub{color:var(--text-muted);font-size:.95rem;margin-bottom:.5rem;animation:fade-in-up .6s .5s ease both;}
+
+    /* ── Confidence bar ── */
+    .conf-wrap{max-width:460px;margin:1.5rem auto;animation:fade-in-up .6s .6s ease both;}
+    .conf-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;}
+    .conf-label{font-family:var(--font-head);font-size:.85rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;}
+    .conf-pct{font-family:var(--font-mono);font-size:1.6rem;font-weight:500;color:var(--teal);}
+    .conf-bar-track{background:rgba(255,255,255,.06);border-radius:6px;height:10px;overflow:hidden;}
+    .conf-bar-fill{
+      height:100%;border-radius:6px;
+      background:linear-gradient(90deg,var(--red),var(--teal));
+      width:0%; transition:width 1.5s cubic-bezier(.2,.8,.3,1);
+    }
+
+    /* ── Grid layout ── */
+    .container{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:0 2rem 4rem;}
+    .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem;}
+    @media(max-width:768px){.result-grid{grid-template-columns:1fr;}}
+
+    .card{
+      background:var(--bg-glass);border:1px solid var(--border);border-radius:16px;padding:1.75rem;
+      backdrop-filter:blur(12px);position:relative;overflow:hidden;
+      animation:fade-in-up .6s ease both;
+    }
+    .card::before{
+      content:'';position:absolute;top:0;left:0;right:0;height:2px;
+      background:linear-gradient(90deg,var(--red),var(--teal),var(--red));
+      background-size:200% 100%;animation:shimmer 3s linear infinite;
+    }
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+    .card-title{font-family:var(--font-head);font-size:1.05rem;font-weight:700;letter-spacing:.04em;margin-bottom:1.25rem;display:flex;align-items:center;gap:.6rem;color:var(--text-muted);text-transform:uppercase;}
+
+    /* Patient info */
+    .info-row{display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid rgba(255,255,255,.04);}
+    .info-row:last-child{border-bottom:none;}
+    .info-key{font-size:.82rem;color:var(--text-muted);}
+    .info-val{font-family:var(--font-mono);font-size:.88rem;color:var(--text-main);}
+
+    /* Top predictions */
+    .pred-row{
+      display:flex;align-items:center;gap:.75rem;padding:.6rem 0;
+      border-bottom:1px solid rgba(255,255,255,.04);
+    }
+    .pred-row:last-child{border-bottom:none;}
+    .pred-badge{
+      width:48px;height:48px;border-radius:10px;
+      background:rgba(230,57,70,.1);border:1px solid var(--border);
+      display:flex;align-items:center;justify-content:center;
+      font-family:var(--font-head);font-size:1rem;font-weight:700;color:var(--red);
+      flex-shrink:0;
+    }
+    .pred-bar-wrap{flex:1;}
+    .pred-label{font-size:.82rem;color:var(--text-muted);margin-bottom:.25rem;}
+    .pred-bar-track{background:rgba(255,255,255,.05);border-radius:4px;height:6px;overflow:hidden;}
+    .pred-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--red),var(--teal));transition:width 1.2s ease;}
+    .pred-pct{font-family:var(--font-mono);font-size:.82rem;color:var(--teal);min-width:48px;text-align:right;}
+
+    /* Compatibility */
+    .compat-section{margin-bottom:1.25rem;}
+    .compat-label{font-size:.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.6rem;}
+    .compat-tags{display:flex;flex-wrap:wrap;gap:.5rem;}
+    .tag{
+      padding:.3rem .8rem;border-radius:20px;
+      font-family:var(--font-mono);font-size:.78rem;font-weight:500;
+    }
+    .tag-give{background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.3);color:var(--teal);}
+    .tag-recv{background:rgba(230,57,70,.1);border:1px solid rgba(230,57,70,.3);color:var(--red);}
+
+    /* Image card */
+    .img-card{display:flex;flex-direction:column;}
+    .analysis-img{
+      width:100%;border-radius:10px;object-fit:cover;max-height:260px;
+      border:1px solid var(--border);margin-bottom:1rem;
+    }
+    .temp-info{
+      display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;
+      background:rgba(0,212,170,.05);border:1px solid var(--border-teal);border-radius:10px;
+    }
+    .temp-icon{font-size:1.4rem;}
+    .temp-text .val{font-family:var(--font-mono);font-size:1.1rem;color:var(--teal);}
+    .temp-text .note{font-size:.78rem;color:var(--text-muted);margin-top:.15rem;}
+
+    /* Fact card */
+    .fact-card{
+      background:rgba(230,57,70,.05);border:1px solid rgba(230,57,70,.15);
+      border-radius:12px;padding:1.25rem;margin-top:.5rem;
+      font-size:.9rem;line-height:1.7;color:var(--text-muted);
+    }
+    .fact-card strong{color:var(--text-main);}
+
+    /* Actions */
+    .actions{display:flex;gap:1rem;flex-wrap:wrap;margin-top:2rem;}
+    .btn{
+      display:inline-flex;align-items:center;gap:.6rem;
+      padding:.8rem 1.75rem;border-radius:10px;font-family:var(--font-head);font-size:1rem;font-weight:700;
+      letter-spacing:.06em;text-decoration:none;cursor:pointer;border:none;
+      transition:all .2s;
+    }
+    .btn-primary{background:linear-gradient(135deg,var(--red),#c0392b);color:#fff;box-shadow:0 4px 20px rgba(230,57,70,.4);}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(230,57,70,.55);}
+    .btn-secondary{background:var(--bg-glass);border:1px solid var(--border);color:var(--text-muted);}
+    .btn-secondary:hover{color:var(--red);border-color:var(--red);}
+    .btn-teal{background:rgba(0,212,170,.1);border:1px solid var(--border-teal);color:var(--teal);}
+    .btn-teal:hover{background:rgba(0,212,170,.2);}
+
+    /* Print */
+    @media print{
+      nav,.actions{display:none!important;}
+      body{background:#fff;color:#000;}
+      .card{border:1px solid #ccc;background:#fff;}
+    }
+
+    /* Notes */
+    .notes-box{
+      background:rgba(255,209,102,.05);border:1px solid rgba(255,209,102,.15);
+      border-radius:10px;padding:1rem;margin-top:1rem;
+      font-size:.88rem;color:var(--text-muted);line-height:1.6;
+    }
+
+    footer{position:relative;z-index:1;border-top:1px solid var(--border);padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.8rem;}
+    footer a{color:var(--red);text-decoration:none;}
+    ::-webkit-scrollbar{width:6px;}
+    ::-webkit-scrollbar-track{background:var(--bg-deep);}
+    ::-webkit-scrollbar-thumb{background:var(--red-dim);border-radius:3px;}
+  </style>
+</head>
+<body>
+<nav>
+  <a class="nav-brand" href="/">
+    <div class="drop"></div>
+    BloodSense<span style="color:var(--red)">AI</span>
+  </a>
+  <div class="nav-links">
+    <a href="/"><i class="fa fa-home"></i> New Analysis</a>
+    <a href="/history"><i class="fa fa-clock-rotate-left"></i> History</a>
+  </div>
+</nav>
+
+<!-- Result hero -->
+<div class="result-hero">
+  <div class="patient-pill">
+    <i class="fa fa-fingerprint"></i>
+    {{ patient_id }} · {{ timestamp }}
+  </div>
+
+  <div class="blood-type-display">
+    <div class="blood-drop-bg">
+      <div class="blood-type-text">{{ blood_type }}</div>
     </div>
-    <a href="/" class="ghost-btn">Run another scan</a>
-</section>
+  </div>
 
-<section class="result-grid">
-    <div class="result-card">
-        <div class="card-header compact">
-            <div>
-                <span class="eyebrow">Confidence</span>
-                <h2>{{ confidence_percent }}% confidence</h2>
-            </div>
-            <span class="hint-pill">{{ blood_type }}</span>
-        </div>
-        <div class="confidence-bar">
-            <div class="confidence-fill" style="width: {{ confidence_percent }}%;"></div>
-        </div>
-        <p class="temperature-note">{{ temperature_note }}</p>
+  <div class="result-name">{{ patient_name }}</div>
+  <div class="result-sub">Blood Group Detected Successfully</div>
 
-        <div class="probability-list">
-            {% for item in top_predictions %}
-                <div class="probability-row">
-                    <span>{{ item.label }}</span>
-                    <strong>{{ item.score_percent }}%</strong>
-                </div>
-            {% endfor %}
-        </div>
+  <div class="conf-wrap">
+    <div class="conf-header">
+      <div class="conf-label"><i class="fa fa-bullseye"></i> Model Confidence</div>
+      <div class="conf-pct">{{ confidence_percent }}%</div>
+    </div>
+    <div class="conf-bar-track">
+      <div class="conf-bar-fill" id="confBar"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Details grid -->
+<div class="container">
+  <div class="result-grid">
+
+    <!-- Patient details -->
+    <div class="card" style="animation-delay:.1s">
+      <div class="card-title"><i class="fa fa-user-circle"></i> Patient Information</div>
+      <div class="info-row"><span class="info-key">Patient ID</span><span class="info-val">{{ patient_id }}</span></div>
+      <div class="info-row"><span class="info-key">Full Name</span><span class="info-val">{{ patient_name }}</span></div>
+      <div class="info-row"><span class="info-key">Age</span><span class="info-val">{{ patient_age if patient_age else '—' }}</span></div>
+      <div class="info-row"><span class="info-key">Gender</span><span class="info-val">{{ patient_gender }}</span></div>
+      <div class="info-row"><span class="info-key">Blood Group</span><span class="info-val" style="color:var(--red);font-size:1.1rem;">{{ blood_type }}</span></div>
+      <div class="info-row"><span class="info-key">Confidence</span><span class="info-val" style="color:var(--teal)">{{ confidence_percent }}%</span></div>
+      <div class="info-row"><span class="info-key">Analysis Date</span><span class="info-val">{{ timestamp }}</span></div>
+      {% if notes %}
+      <div class="notes-box"><i class="fa fa-note-sticky" style="color:var(--gold);margin-right:.5rem;"></i>{{ notes }}</div>
+      {% endif %}
     </div>
 
-    <div class="result-card">
-        <div class="card-header compact">
-            <div>
-                <span class="eyebrow">Captured image</span>
-                <h2>Infrared scan preview</h2>
-            </div>
+    <!-- Analysed image & temp -->
+    <div class="card img-card" style="animation-delay:.2s">
+      <div class="card-title"><i class="fa fa-image"></i> Analysed Image</div>
+      <img class="analysis-img" src="{{ image_url }}" alt="Infrared hand image"/>
+      <div class="temp-info">
+        <div class="temp-icon">🌡️</div>
+        <div class="temp-text">
+          <div class="val">{{ temperature }}°C</div>
+          <div class="note">{{ temperature_note }}</div>
         </div>
-        <div class="preview-card">
-            <img class="preview-image show" src="{{ image_url }}" alt="Infrared hand preview">
-        </div>
-        <div class="mini-card">
-            <h3>Next steps</h3>
-            <ul class="tips-list">
-                <li>Repeat the scan if the hand moved during capture.</li>
-                <li>Cross-check with a clinical blood test.</li>
-                <li>Export the result or share internally.</li>
-            </ul>
-        </div>
+      </div>
     </div>
-</section>
-{% endblock %}
+
+    <!-- Top predictions -->
+    <div class="card" style="animation-delay:.3s">
+      <div class="card-title"><i class="fa fa-chart-bar"></i> All Predictions</div>
+      {% for pred in top_predictions %}
+      <div class="pred-row">
+        <div class="pred-badge">{{ pred.label }}</div>
+        <div class="pred-bar-wrap">
+          <div class="pred-label">{{ pred.label }} — {{ pred.score_percent }}%</div>
+          <div class="pred-bar-track">
+            <div class="pred-bar-fill" style="width:{{ pred.score_percent }}%"></div>
+          </div>
+        </div>
+        <div class="pred-pct">{{ pred.score_percent }}%</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Compatibility -->
+    <div class="card" style="animation-delay:.4s">
+      <div class="card-title"><i class="fa fa-heart-pulse"></i> Blood Compatibility</div>
+      <div class="compat-section">
+        <div class="compat-label">✅ Can Donate To</div>
+        <div class="compat-tags">
+          {% for t in donate_to %}<span class="tag tag-give">{{ t }}</span>{% endfor %}
+        </div>
+      </div>
+      <div class="compat-section">
+        <div class="compat-label">🩸 Can Receive From</div>
+        <div class="compat-tags">
+          {% for t in receive_from %}<span class="tag tag-recv">{{ t }}</span>{% endfor %}
+        </div>
+      </div>
+      {% if blood_fact %}
+      <div class="fact-card">
+        <strong><i class="fa fa-circle-info" style="color:var(--red);margin-right:.4rem;"></i>Blood Type Fact:</strong><br/>
+        {{ blood_fact }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <a href="/" class="btn btn-primary"><i class="fa fa-plus"></i> New Analysis</a>
+    <a href="/history" class="btn btn-teal"><i class="fa fa-clock-rotate-left"></i> View History</a>
+    <button class="btn btn-secondary" onclick="window.print()"><i class="fa fa-print"></i> Print Report</button>
+    <button class="btn btn-secondary" onclick="copyResult()"><i class="fa fa-copy"></i> Copy Result</button>
+  </div>
+</div>
+
+<footer>
+  BloodSense<strong style="color:var(--red)">AI</strong> &copy; {{ current_year }} ·
+  Developed by <a href="https://github.com/RAHULPATEL2002" target="_blank">Rahul Patel</a> ·
+  <a href="mailto:rahulpatelanuppur@gmail.com">rahulpatelanuppur@gmail.com</a>
+  <br/><span style="font-size:.75rem;color:#3d4a63;">⚠️ For research use. Confirm with lab tests for clinical decisions.</span>
+</footer>
+
+<script>
+// Animate confidence bar on load
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    document.getElementById('confBar').style.width='{{ confidence_percent }}%';
+  },300);
+});
+
+function copyResult(){
+  const txt=`BloodSense AI Report\nPatient: {{ patient_name }}\nID: {{ patient_id }}\nBlood Group: {{ blood_type }}\nConfidence: {{ confidence_percent }}%\nDate: {{ timestamp }}`;
+  navigator.clipboard.writeText(txt).then(()=>{
+    const btn=event.target.closest('.btn');
+    btn.innerHTML='<i class="fa fa-check"></i> Copied!';
+    setTimeout(()=>btn.innerHTML='<i class="fa fa-copy"></i> Copy Result',2000);
+  });
+}
+</script>
+</body>
+</html>

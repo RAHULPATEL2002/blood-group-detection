@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Patient History — BloodSense AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    :root{
+      --bg-deep:#04070f;--bg-card:#080d1a;--bg-glass:rgba(12,20,40,0.85);
+      --red:#e63946;--red-glow:rgba(230,57,70,0.35);--red-dim:#8b1a22;
+      --teal:#00d4aa;--teal-glow:rgba(0,212,170,0.25);--gold:#ffd166;
+      --text-main:#e8eaf2;--text-muted:#7a85a0;
+      --border:rgba(230,57,70,0.18);--border-teal:rgba(0,212,170,0.2);
+      --font-head:'Rajdhani',sans-serif;--font-body:'Exo 2',sans-serif;--font-mono:'JetBrains Mono',monospace;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg-deep);color:var(--text-main);font-family:var(--font-body);min-height:100vh;overflow-x:hidden;}
+    body::before{content:'';position:fixed;inset:0;z-index:0;
+      background:radial-gradient(ellipse 80% 60% at 10% 10%,rgba(230,57,70,0.06) 0%,transparent 60%),
+                 radial-gradient(ellipse 60% 50% at 90% 90%,rgba(0,212,170,0.05) 0%,transparent 60%);
+      pointer-events:none;}
+    body::after{content:'';position:fixed;inset:0;z-index:0;
+      background-image:linear-gradient(rgba(230,57,70,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(230,57,70,0.03) 1px,transparent 1px);
+      background-size:60px 60px;pointer-events:none;}
+    nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;
+      padding:0 2.5rem;height:70px;background:rgba(4,7,15,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
+    .nav-brand{display:flex;align-items:center;gap:.75rem;font-family:var(--font-head);font-size:1.5rem;font-weight:700;text-decoration:none;color:var(--text-main);}
+    .drop{width:32px;height:32px;background:var(--red);clip-path:polygon(50% 0%,100% 65%,80% 100%,20% 100%,0% 65%);animation:pulse-drop 2s ease-in-out infinite;box-shadow:0 0 20px var(--red-glow);}
+    @keyframes pulse-drop{0%,100%{box-shadow:0 0 15px var(--red-glow);}50%{box-shadow:0 0 35px rgba(230,57,70,0.6);}}
+    .nav-links{display:flex;gap:.5rem;}
+    .nav-links a{padding:.45rem 1rem;text-decoration:none;color:var(--text-muted);font-family:var(--font-head);font-size:.95rem;font-weight:600;letter-spacing:.05em;border-radius:6px;transition:all .2s;}
+    .nav-links a:hover,.nav-links a.active{color:var(--red);background:rgba(230,57,70,.08);}
+
+    .container{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:2.5rem 2rem;}
+
+    .page-header{margin-bottom:2.5rem;}
+    .page-title{font-family:var(--font-head);font-size:2.5rem;font-weight:700;margin-bottom:.4rem;}
+    .page-title span{color:var(--red);}
+    .page-sub{color:var(--text-muted);font-size:.95rem;}
+
+    /* Stats row */
+    .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;}
+    .stat-mini{
+      background:var(--bg-glass);border:1px solid var(--border);border-radius:14px;
+      padding:1.25rem;backdrop-filter:blur(12px);display:flex;align-items:center;gap:1rem;
+      animation:fade-in-up .5s ease both;
+    }
+    .stat-mini-icon{font-size:1.6rem;}
+    .stat-mini-num{font-family:var(--font-head);font-size:1.6rem;font-weight:700;color:var(--red);line-height:1;}
+    .stat-mini-lbl{font-size:.75rem;color:var(--text-muted);}
+
+    /* Blood type chart */
+    .chart-wrap{
+      background:var(--bg-glass);border:1px solid var(--border);border-radius:16px;
+      padding:1.75rem;backdrop-filter:blur(12px);margin-bottom:2rem;
+      animation:fade-in-up .5s .1s ease both;
+    }
+    .chart-title{font-family:var(--font-head);font-size:1.1rem;font-weight:700;margin-bottom:1.25rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:.6rem;}
+    .chart-bars{display:flex;align-items:flex-end;gap:.75rem;height:100px;}
+    .chart-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:.4rem;}
+    .chart-bar{
+      width:100%;background:linear-gradient(180deg,var(--red),var(--red-dim));border-radius:4px 4px 0 0;
+      min-height:4px;transition:height 1s ease;position:relative;
+    }
+    .chart-bar:hover{background:linear-gradient(180deg,var(--teal),var(--teal));cursor:default;}
+    .chart-bar-label{font-family:var(--font-head);font-size:.78rem;font-weight:700;color:var(--red);}
+    .chart-bar-count{font-family:var(--font-mono);font-size:.7rem;color:var(--text-muted);}
+
+    /* Toolbar */
+    .toolbar{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;}
+    .search-box{
+      display:flex;align-items:center;gap:.6rem;flex:1;min-width:220px;
+      background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+      border-radius:10px;padding:.65rem 1rem;
+    }
+    .search-box input{background:none;border:none;outline:none;color:var(--text-main);font-family:var(--font-body);font-size:.9rem;flex:1;}
+    .search-box input::placeholder{color:var(--text-muted);}
+    .filter-select{
+      background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+      border-radius:10px;padding:.65rem 1rem;color:var(--text-main);font-family:var(--font-body);font-size:.9rem;outline:none;
+    }
+    .filter-select option{background:#0d1426;}
+
+    /* Table */
+    .table-wrap{
+      background:var(--bg-glass);border:1px solid var(--border);border-radius:16px;overflow:hidden;
+      backdrop-filter:blur(12px);animation:fade-in-up .5s .2s ease both;
+    }
+    table{width:100%;border-collapse:collapse;}
+    thead tr{background:rgba(230,57,70,.07);border-bottom:1px solid var(--border);}
+    th{padding:.9rem 1rem;text-align:left;font-family:var(--font-head);font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);}
+    tbody tr{border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s;}
+    tbody tr:last-child{border-bottom:none;}
+    tbody tr:hover{background:rgba(230,57,70,.04);}
+    td{padding:.85rem 1rem;font-size:.88rem;}
+
+    .blood-badge{
+      display:inline-flex;align-items:center;justify-content:center;
+      width:44px;height:44px;border-radius:50%;
+      background:rgba(230,57,70,.12);border:1px solid rgba(230,57,70,.3);
+      font-family:var(--font-head);font-size:.95rem;font-weight:700;color:var(--red);
+    }
+    .conf-chip{
+      display:inline-block;padding:.25rem .7rem;border-radius:20px;
+      font-family:var(--font-mono);font-size:.75rem;
+    }
+    .conf-high{background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.3);color:var(--teal);}
+    .conf-med {background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.3);color:var(--gold);}
+    .conf-low {background:rgba(230,57,70,.1);border:1px solid rgba(230,57,70,.3);color:var(--red);}
+
+    .btn-del{
+      background:rgba(230,57,70,.1);border:1px solid rgba(230,57,70,.2);
+      color:var(--red);padding:.35rem .7rem;border-radius:8px;font-size:.78rem;cursor:pointer;
+      transition:all .15s;font-family:var(--font-body);
+    }
+    .btn-del:hover{background:rgba(230,57,70,.25);}
+
+    .empty-state{padding:4rem;text-align:center;color:var(--text-muted);}
+    .empty-state .icon{font-size:3rem;margin-bottom:1rem;opacity:.4;}
+    .empty-state a{color:var(--red);text-decoration:none;}
+
+    .btn{display:inline-flex;align-items:center;gap:.6rem;padding:.75rem 1.5rem;border-radius:10px;font-family:var(--font-head);font-size:.95rem;font-weight:700;letter-spacing:.06em;text-decoration:none;cursor:pointer;border:none;transition:all .2s;}
+    .btn-primary{background:linear-gradient(135deg,var(--red),#c0392b);color:#fff;box-shadow:0 4px 20px rgba(230,57,70,.4);}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(230,57,70,.55);}
+
+    @keyframes fade-in-up{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+    .pagination{display:flex;justify-content:center;gap:.5rem;margin-top:1.5rem;}
+    .page-btn{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--bg-glass);color:var(--text-muted);cursor:pointer;font-family:var(--font-mono);font-size:.82rem;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+    .page-btn.active,.page-btn:hover{background:rgba(230,57,70,.15);border-color:var(--red);color:var(--red);}
+
+    footer{position:relative;z-index:1;border-top:1px solid var(--border);padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.8rem;margin-top:2rem;}
+    footer a{color:var(--red);text-decoration:none;}
+    ::-webkit-scrollbar{width:6px;}
+    ::-webkit-scrollbar-track{background:var(--bg-deep);}
+    ::-webkit-scrollbar-thumb{background:var(--red-dim);border-radius:3px;}
+    @media(max-width:768px){th:nth-child(4),td:nth-child(4),th:nth-child(5),td:nth-child(5){display:none;}}
+  </style>
+</head>
+<body>
+<nav>
+  <a class="nav-brand" href="/">
+    <div class="drop"></div>
+    BloodSense<span style="color:var(--red)">AI</span>
+  </a>
+  <div class="nav-links">
+    <a href="/"><i class="fa fa-home"></i> Dashboard</a>
+    <a href="/history" class="active"><i class="fa fa-clock-rotate-left"></i> History</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <h1 class="page-title">Patient <span>History</span></h1>
+    <p class="page-sub">All blood group detection records stored in the database.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stat-row">
+    <div class="stat-mini">
+      <div class="stat-mini-icon">🧬</div>
+      <div>
+        <div class="stat-mini-num">{{ stats.total }}</div>
+        <div class="stat-mini-lbl">Total Records</div>
+      </div>
+    </div>
+    <div class="stat-mini">
+      <div class="stat-mini-icon">🎯</div>
+      <div>
+        <div class="stat-mini-num">{{ stats.avg_confidence }}%</div>
+        <div class="stat-mini-lbl">Avg Confidence</div>
+      </div>
+    </div>
+    <div class="stat-mini">
+      <div class="stat-mini-icon">🩸</div>
+      <div>
+        <div class="stat-mini-num">{{ stats.by_type|length }}</div>
+        <div class="stat-mini-lbl">Blood Types Found</div>
+      </div>
+    </div>
+    <div class="stat-mini" style="animation-delay:.2s">
+      <div class="stat-mini-icon">⚡</div>
+      <div>
+        <div class="stat-mini-num">AI</div>
+        <div class="stat-mini-lbl">VGG16 Powered</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Blood type chart -->
+  {% if stats.by_type %}
+  <div class="chart-wrap">
+    <div class="chart-title"><i class="fa fa-chart-column" style="color:var(--red)"></i> Blood Type Distribution</div>
+    <div class="chart-bars" id="chartBars">
+      {% set max_count = stats.by_type[0].count if stats.by_type else 1 %}
+      {% for item in stats.by_type %}
+      <div class="chart-bar-wrap">
+        <div class="chart-bar" style="height:{{ [((item.count / max_count) * 80)|int, 4]|max }}px;" title="{{ item.count }} patients"></div>
+        <div class="chart-bar-label">{{ item.blood_type }}</div>
+        <div class="chart-bar-count">{{ item.count }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-box">
+      <i class="fa fa-magnifying-glass" style="color:var(--text-muted)"></i>
+      <input type="text" id="searchInput" placeholder="Search by name, ID, blood type…" oninput="filterTable()"/>
+    </div>
+    <select class="filter-select" id="bloodFilter" onchange="filterTable()">
+      <option value="">All Blood Types</option>
+      <option>A+</option><option>A-</option>
+      <option>B+</option><option>B-</option>
+      <option>AB+</option><option>AB-</option>
+      <option>O+</option><option>O-</option>
+    </select>
+    <a href="/" class="btn btn-primary"><i class="fa fa-plus"></i> New Analysis</a>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    {% if records %}
+    <table id="histTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Patient</th>
+          <th>Blood Group</th>
+          <th>Confidence</th>
+          <th>Temperature</th>
+          <th>Date</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in records %}
+        <tr id="row-{{ r.id }}" data-name="{{ r.name|lower }}" data-pid="{{ r.patient_id|lower }}" data-type="{{ r.blood_type }}">
+          <td style="color:var(--text-muted);font-family:var(--font-mono);font-size:.75rem;">{{ r.id }}</td>
+          <td>
+            <div style="font-weight:600;">{{ r.name }}</div>
+            <div style="font-family:var(--font-mono);font-size:.72rem;color:var(--text-muted);">{{ r.patient_id }}</div>
+            {% if r.age %}<div style="font-size:.75rem;color:var(--text-muted);">Age {{ r.age }} · {{ r.gender }}</div>{% endif %}
+          </td>
+          <td><div class="blood-badge">{{ r.blood_type }}</div></td>
+          <td>
+            <span class="conf-chip {% if r.confidence >= 0.85 %}conf-high{% elif r.confidence >= 0.6 %}conf-med{% else %}conf-low{% endif %}">
+              {{ "%.1f"|format(r.confidence * 100) }}%
+            </span>
+          </td>
+          <td style="font-family:var(--font-mono);font-size:.82rem;">
+            {% if r.temperature %}{{ r.temperature }}°C{% else %}—{% endif %}
+          </td>
+          <td style="font-size:.8rem;color:var(--text-muted);">{{ r.created_at[:16] }}</td>
+          <td>
+            <button class="btn-del" onclick="deleteRecord({{ r.id }})">
+              <i class="fa fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="icon"><i class="fa fa-database"></i></div>
+      <div>No records yet. <a href="/">Run your first analysis →</a></div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<footer>
+  BloodSense<strong style="color:var(--red)">AI</strong> &copy; {{ current_year }} ·
+  Developed by <a href="https://github.com/RAHULPATEL2002" target="_blank">Rahul Patel</a> ·
+  <a href="mailto:rahulpatelanuppur@gmail.com">rahulpatelanuppur@gmail.com</a>
+</footer>
+
+<script>
+function filterTable(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  const bt=document.getElementById('bloodFilter').value;
+  document.querySelectorAll('#histTable tbody tr').forEach(row=>{
+    const n=row.dataset.name||'';
+    const p=row.dataset.pid||'';
+    const t=row.dataset.type||'';
+    const matchQ=!q||(n.includes(q)||p.includes(q)||t.toLowerCase().includes(q));
+    const matchBt=!bt||(t===bt);
+    row.style.display=(matchQ&&matchBt)?'':'none';
+  });
+}
+
+async function deleteRecord(id){
+  if(!confirm('Delete this patient record?')) return;
+  const resp=await fetch(`/history/delete/${id}`,{method:'POST'});
+  if(resp.ok){
+    const row=document.getElementById(`row-${id}`);
+    row.style.transition='opacity .3s';
+    row.style.opacity='0';
+    setTimeout(()=>row.remove(),300);
+  }
+}
+</script>
+</body>
+</html>

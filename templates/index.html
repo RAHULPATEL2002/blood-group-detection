@@ -1,181 +1,754 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BloodSense AI — Blood Group Detection</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    :root {
+      --bg-deep:    #04070f;
+      --bg-card:    #080d1a;
+      --bg-glass:   rgba(12,20,40,0.85);
+      --red:        #e63946;
+      --red-glow:   rgba(230,57,70,0.35);
+      --red-dim:    #8b1a22;
+      --teal:       #00d4aa;
+      --teal-glow:  rgba(0,212,170,0.25);
+      --gold:       #ffd166;
+      --text-main:  #e8eaf2;
+      --text-muted: #7a85a0;
+      --border:     rgba(230,57,70,0.18);
+      --border-teal:rgba(0,212,170,0.2);
+      --font-head:  'Rajdhani', sans-serif;
+      --font-body:  'Exo 2', sans-serif;
+      --font-mono:  'JetBrains Mono', monospace;
+    }
 
-{% block title %}Infrared Blood Group AI | Scan{% endblock %}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-{% block content %}
-<section class="hero">
-    <div class="hero-content">
-        <span class="eyebrow">Infrared hand analysis</span>
-        <h1>Detect blood group patterns from infrared hand imagery.</h1>
-        <p>
-            Upload a clear infrared hand image and record the surface temperature.
-            The AI engine evaluates eight common blood groups and returns confidence insights instantly.
-        </p>
-        <div class="hero-tags">
-            <span>Infrared VGG16</span>
-            <span>8 blood groups</span>
-            <span>Fast mobile capture</span>
-        </div>
-    </div>
-    <div class="hero-panel">
-        <div class="hero-stat">
-            <strong>128 × 128</strong>
-            <span>Model input size</span>
-        </div>
-        <div class="hero-stat">
-            <strong>{{ max_upload_mb }} MB</strong>
-            <span>Max upload size</span>
-        </div>
-        <div class="hero-stat">
-            <strong>Secure</strong>
-            <span>Auto-clean uploads</span>
-        </div>
-    </div>
-</section>
+    body {
+      background: var(--bg-deep);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
 
-<section class="scan-grid">
-    <form class="scan-card" id="scanForm" method="post" action="/predict" enctype="multipart/form-data">
-        <div class="card-header">
-            <div>
-                <span class="eyebrow">Step 1</span>
-                <h2>Upload infrared hand image</h2>
-            </div>
-            <span class="hint-pill">Camera ready</span>
-        </div>
+    /* ── Animated background ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 15% 10%, rgba(230,57,70,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 85% 80%, rgba(0,212,170,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(10,15,30,0.9) 0%, transparent 100%);
+      pointer-events: none;
+    }
 
-        <label class="dropzone" for="imageInput">
-            <input id="imageInput" type="file" name="image" accept="image/*" capture="environment" required>
-            <div class="dropzone-inner">
-                <h3>Tap to capture or upload</h3>
-                <p>Use a steady hand and even lighting for best results.</p>
-            </div>
-        </label>
+    /* Grid overlay */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(230,57,70,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(230,57,70,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+    }
 
-        <div class="preview-card">
-            <div class="preview-placeholder" id="previewPlaceholder">
-                Preview will appear here after upload.
-            </div>
-            <img id="previewImage" class="preview-image" alt="Infrared preview">
-        </div>
+    /* ── Floating particles ── */
+    .particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .particle {
+      position: absolute; border-radius: 50%;
+      background: var(--red);
+      animation: float-particle linear infinite;
+      opacity: 0;
+    }
+    @keyframes float-particle {
+      0%   { transform: translateY(100vh) scale(0); opacity: 0; }
+      10%  { opacity: 0.6; }
+      90%  { opacity: 0.2; }
+      100% { transform: translateY(-20px) scale(1); opacity: 0; }
+    }
 
-        <div class="file-meta" id="fileMeta">
-            <div>
-                <span>File name</span>
-                <strong id="fileName">No file yet</strong>
-            </div>
-            <div>
-                <span>File size</span>
-                <strong id="fileSize">—</strong>
-            </div>
-            <div>
-                <span>Status</span>
-                <strong id="fileStatus">Awaiting upload</strong>
-            </div>
-        </div>
+    /* ── Nav ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2.5rem;
+      height: 70px;
+      background: rgba(4,7,15,0.92);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 0.75rem;
+      font-family: var(--font-head); font-size: 1.5rem; font-weight: 700;
+      text-decoration: none; color: var(--text-main);
+    }
+    .nav-brand .drop {
+      width: 32px; height: 32px;
+      background: var(--red);
+      clip-path: polygon(50% 0%, 100% 65%, 80% 100%, 20% 100%, 0% 65%);
+      animation: pulse-drop 2s ease-in-out infinite;
+      box-shadow: 0 0 20px var(--red-glow);
+    }
+    @keyframes pulse-drop { 0%,100%{box-shadow:0 0 15px var(--red-glow);} 50%{box-shadow:0 0 35px rgba(230,57,70,0.6);} }
+    .nav-links { display: flex; gap: 0.5rem; }
+    .nav-links a {
+      padding: 0.45rem 1rem;
+      text-decoration: none; color: var(--text-muted);
+      font-family: var(--font-head); font-size: 0.95rem; font-weight: 600; letter-spacing: 0.05em;
+      border-radius: 6px;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--red); background: rgba(230,57,70,0.08);
+    }
+    .nav-badge {
+      background: var(--red); color: #fff;
+      border-radius: 20px; padding: 0.2rem 0.65rem;
+      font-size: 0.7rem; font-family: var(--font-mono); font-weight: 500;
+      margin-left: 0.4rem;
+    }
 
-        <div class="temperature-card">
-            <div class="card-header compact">
-                <div>
-                    <span class="eyebrow">Step 2</span>
-                    <h2>Record temperature</h2>
-                </div>
-                <span class="hint-pill">Required</span>
-            </div>
+    /* ── Hero ── */
+    .hero {
+      position: relative; z-index: 1;
+      text-align: center;
+      padding: 5rem 2rem 3rem;
+    }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 0.35rem 1rem;
+      font-family: var(--font-mono); font-size: 0.75rem;
+      color: var(--teal); letter-spacing: 0.1em;
+      margin-bottom: 1.5rem;
+      background: rgba(0,212,170,0.05);
+      animation: fade-in-down 0.6s ease both;
+    }
+    .dot-live {
+      width: 7px; height: 7px; background: var(--teal); border-radius: 50%;
+      animation: blink 1.5s ease infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
 
-            <div class="temperature-inputs">
-                <input
-                    type="range"
-                    id="temperatureRange"
-                    min="28"
-                    max="45"
-                    step="0.1"
-                    value="{{ default_temperature }}"
-                >
-                <div class="temperature-field">
-                    <input
-                        type="number"
-                        id="temperatureInput"
-                        name="temperature"
-                        step="0.1"
-                        min="20"
-                        max="50"
-                        value="{{ default_temperature }}"
-                        required
-                    >
-                    <span>&deg;C</span>
-                </div>
-            </div>
-            <small>Typical infrared hand temperature ranges from 30&ndash;40&deg;C.</small>
-        </div>
+    .hero h1 {
+      font-family: var(--font-head); font-size: clamp(2.8rem, 6vw, 5.5rem); font-weight: 700;
+      line-height: 1.0; letter-spacing: -0.02em;
+      margin-bottom: 1.2rem;
+      animation: fade-in-up 0.7s 0.1s ease both;
+    }
+    .hero h1 .accent { color: var(--red); text-shadow: 0 0 40px var(--red-glow); }
+    .hero h1 .accent-teal { color: var(--teal); }
 
-        <button class="primary-btn" type="submit" {% if not model_ready %}disabled{% endif %}>
-            Run Infrared Screening
-        </button>
-        {% if not model_ready %}
-            <p class="muted-text">Model is offline. Upload the model file to enable predictions.</p>
-        {% endif %}
-    </form>
+    .hero-sub {
+      font-size: 1.1rem; color: var(--text-muted); max-width: 560px; margin: 0 auto 2.5rem;
+      line-height: 1.7;
+      animation: fade-in-up 0.7s 0.2s ease both;
+    }
 
-    <aside class="info-card">
-        <div class="card-header">
-            <div>
-                <span class="eyebrow">Best capture tips</span>
-                <h2>Get a clean infrared scan</h2>
-            </div>
-        </div>
-        <ul class="tips-list">
-            <li>Ensure the hand is fully visible and flat.</li>
-            <li>Keep distance consistent with the infrared sensor.</li>
-            <li>Avoid glare, reflections, or metal accessories.</li>
-            <li>Allow 10 seconds for temperature to stabilize.</li>
-        </ul>
+    .hero-stats {
+      display: flex; justify-content: center; gap: 3rem; flex-wrap: wrap;
+      margin-bottom: 3rem;
+      animation: fade-in-up 0.7s 0.3s ease both;
+    }
+    .hero-stat { text-align: center; }
+    .hero-stat .val {
+      font-family: var(--font-head); font-size: 2.2rem; font-weight: 700;
+      color: var(--red); display: block;
+    }
+    .hero-stat .lbl { font-size: 0.78rem; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; }
 
-        <div class="mini-card">
-            <h3>Supported blood groups</h3>
-            <div class="tag-grid">
-                <span>A+</span><span>A-</span><span>B+</span><span>B-</span>
-                <span>AB+</span><span>AB-</span><span>O+</span><span>O-</span>
-            </div>
-        </div>
+    /* ── Blood types orbit ── */
+    .orbit-wrap {
+      position: relative; width: 260px; height: 260px;
+      margin: 0 auto 3rem;
+      animation: fade-in 1s 0.4s ease both;
+    }
+    .orbit-center {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 90px; height: 90px; background: var(--red);
+      clip-path: polygon(50% 0%, 100% 65%, 80% 100%, 20% 100%, 0% 65%);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-head); font-size: 1.3rem; color: #fff;
+      box-shadow: 0 0 40px rgba(230,57,70,0.5);
+      z-index: 2;
+    }
+    .orbit {
+      position: absolute; inset: 0; border-radius: 50%;
+      border: 1px dashed rgba(230,57,70,0.25);
+      animation: spin 12s linear infinite;
+    }
+    .orbit-item {
+      position: absolute; width: 38px; height: 38px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-head); font-size: 0.75rem; font-weight: 700; color: var(--red);
+      animation: counter-spin 12s linear infinite;
+      box-shadow: 0 0 12px rgba(230,57,70,0.2);
+    }
+    @keyframes spin        { from{transform:rotate(0)}   to{transform:rotate(360deg)} }
+    @keyframes counter-spin{ from{transform:rotate(0)}   to{transform:rotate(-360deg)} }
 
-        <div class="mini-card">
-            <h3>How it works</h3>
-            <ol class="steps">
-                <li>Infrared image is resized and normalized.</li>
-                <li>VGG16 classifier evaluates learned heat patterns.</li>
-                <li>Top blood group probabilities are returned instantly.</li>
-            </ol>
-        </div>
-    </aside>
-</section>
+    /* ── Upload form ── */
+    .section { position: relative; z-index: 1; padding: 2rem; max-width: 1100px; margin: 0 auto; }
+    .section-title {
+      font-family: var(--font-head); font-size: 1.8rem; font-weight: 700;
+      margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;
+    }
+    .section-title::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
 
-<section class="faq">
-    <div class="card-header">
-        <div>
-            <span class="eyebrow">FAQ</span>
-            <h2>Common questions</h2>
-        </div>
-    </div>
-    <div class="faq-grid">
-        <div class="faq-card">
-            <h3>Is the model clinical-grade?</h3>
-            <p>This tool is for research and learning. Confirm all results with laboratory testing.</p>
-        </div>
-        <div class="faq-card">
-            <h3>Does temperature affect predictions?</h3>
-            <p>Temperature is logged for context. If you retrain the model with temperature input, it can boost accuracy.</p>
-        </div>
-        <div class="faq-card">
-            <h3>Can I use a mobile phone?</h3>
-            <p>Yes. The upload button opens the phone camera. Use HTTPS for best camera access.</p>
-        </div>
-    </div>
-</section>
+    .card {
+      background: var(--bg-glass);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      backdrop-filter: blur(12px);
+      position: relative; overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--red), var(--teal), var(--red));
+      background-size: 200% 100%;
+      animation: shimmer 3s linear infinite;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
-<div id="loadingOverlay" class="loading-overlay">
-    <div class="loading-card">
-        <div class="spinner"></div>
-        <p>Analyzing infrared scan. Please wait...</p>
-    </div>
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+    @media(max-width:768px){ .form-grid{grid-template-columns:1fr;} }
+
+    .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+    .form-group label {
+      font-family: var(--font-head); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.06em;
+      color: var(--text-muted); text-transform: uppercase;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      color: var(--text-main);
+      font-family: var(--font-body); font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px var(--red-glow);
+    }
+    .form-group select option { background: #0d1426; }
+
+    /* ── Upload zone ── */
+    .upload-zone {
+      border: 2px dashed rgba(230,57,70,0.3);
+      border-radius: 14px; padding: 2.5rem 1.5rem;
+      text-align: center; cursor: pointer;
+      transition: all 0.3s;
+      background: rgba(230,57,70,0.03);
+      position: relative; overflow: hidden;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--red);
+      background: rgba(230,57,70,0.07);
+      box-shadow: 0 0 30px rgba(230,57,70,0.15);
+    }
+    .upload-zone input[type="file"] { display: none; }
+    .upload-icon {
+      font-size: 2.5rem; color: var(--red); margin-bottom: 1rem;
+      display: block; animation: bounce-icon 2s ease infinite;
+    }
+    @keyframes bounce-icon { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    .upload-title { font-family: var(--font-head); font-size: 1.15rem; font-weight: 600; margin-bottom: 0.4rem; }
+    .upload-sub { font-size: 0.85rem; color: var(--text-muted); }
+    .upload-preview {
+      max-width: 100%; max-height: 200px; border-radius: 10px;
+      margin-top: 1rem; display: none; border: 1px solid var(--border);
+    }
+
+    /* ── Temp slider ── */
+    .temp-display {
+      display: flex; align-items: center; gap: 1rem; margin-top: 0.75rem;
+    }
+    .temp-val {
+      font-family: var(--font-mono); font-size: 1.5rem; font-weight: 500;
+      color: var(--teal); min-width: 80px;
+      background: rgba(0,212,170,0.08); border: 1px solid var(--border-teal);
+      border-radius: 8px; padding: 0.35rem 0.75rem; text-align: center;
+    }
+    input[type="range"] {
+      -webkit-appearance: none; flex: 1; height: 6px;
+      background: linear-gradient(90deg, var(--teal), var(--red));
+      border-radius: 3px; outline: none; cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 20px; height: 20px;
+      background: #fff; border: 2px solid var(--red); border-radius: 50%;
+      box-shadow: 0 0 10px var(--red-glow);
+    }
+
+    /* ── Submit button ── */
+    .btn-analyze {
+      display: flex; align-items: center; justify-content: center; gap: 0.75rem;
+      width: 100%; padding: 1rem 2rem;
+      background: linear-gradient(135deg, var(--red), #c0392b);
+      color: #fff; font-family: var(--font-head); font-size: 1.1rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      border: none; border-radius: 12px; cursor: pointer;
+      margin-top: 1.5rem;
+      position: relative; overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(230,57,70,0.4);
+    }
+    .btn-analyze::before {
+      content: '';
+      position: absolute; top: -50%; left: -60%; width: 200%; height: 200%;
+      background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.12) 50%, transparent 70%);
+      transform: skewX(-20deg);
+      animation: shine 3s ease infinite;
+    }
+    @keyframes shine { 0%,100%{left:-60%} 50%{left:100%} }
+    .btn-analyze:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(230,57,70,0.55); }
+    .btn-analyze:active { transform: translateY(0); }
+    .btn-analyze.loading { pointer-events: none; opacity: 0.8; }
+
+    /* ── Stats cards ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 3rem; }
+    .stat-card {
+      background: var(--bg-glass);
+      border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.5rem;
+      backdrop-filter: blur(12px);
+      transition: transform 0.2s, box-shadow 0.2s;
+      animation: fade-in-up 0.6s ease both;
+    }
+    .stat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(230,57,70,0.1); }
+    .stat-card .icon { font-size: 1.6rem; margin-bottom: 0.75rem; }
+    .stat-card .num {
+      font-family: var(--font-head); font-size: 2rem; font-weight: 700;
+      color: var(--red); line-height: 1;
+    }
+    .stat-card .desc { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.35rem; }
+
+    /* ── How it works ── */
+    .how-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+    .how-step {
+      background: var(--bg-glass);
+      border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.5rem;
+      text-align: center;
+      transition: all 0.3s;
+      animation: fade-in-up 0.6s ease both;
+    }
+    .how-step:hover { border-color: var(--red); transform: translateY(-4px); }
+    .how-num {
+      width: 46px; height: 46px; background: rgba(230,57,70,0.1);
+      border: 2px solid var(--red); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-head); font-size: 1.2rem; font-weight: 700; color: var(--red);
+      margin: 0 auto 1rem;
+    }
+    .how-step h3 { font-family: var(--font-head); font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .how-step p  { font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; }
+
+    /* ── Blood types grid ── */
+    .btype-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+    @media(max-width:600px){ .btype-grid{grid-template-columns:repeat(2,1fr);} }
+    .btype-badge {
+      background: rgba(230,57,70,0.08); border: 1px solid rgba(230,57,70,0.2);
+      border-radius: 12px; padding: 1rem 0.75rem; text-align: center;
+      transition: all 0.2s; cursor: default;
+    }
+    .btype-badge:hover { background: rgba(230,57,70,0.15); transform: scale(1.04); }
+    .btype-badge .name { font-family: var(--font-head); font-size: 1.5rem; font-weight: 700; color: var(--red); }
+    .btype-badge .pct  { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+    /* ── Alert/error ── */
+    .alert {
+      padding: 0.85rem 1.25rem; border-radius: 10px; margin-bottom: 1.5rem;
+      display: flex; align-items: center; gap: 0.75rem;
+      font-size: 0.9rem;
+    }
+    .alert-error { background: rgba(230,57,70,0.1); border: 1px solid rgba(230,57,70,0.3); color: #ff6b7a; }
+    .alert-warn  { background: rgba(255,209,102,0.1); border: 1px solid rgba(255,209,102,0.3); color: var(--gold); }
+
+    /* ── Model badge ── */
+    .model-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.35rem 0.9rem;
+      border-radius: 20px; font-size: 0.78rem; font-family: var(--font-mono);
+    }
+    .model-ok   { background: rgba(0,212,170,0.1); border: 1px solid rgba(0,212,170,0.3); color: var(--teal); }
+    .model-fail { background: rgba(230,57,70,0.1); border: 1px solid rgba(230,57,70,0.3); color: var(--red); }
+
+    /* ── Animations ── */
+    @keyframes fade-in-down { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fade-in-up   { from{opacity:0;transform:translateY(20px)}  to{opacity:1;transform:translateY(0)} }
+    @keyframes fade-in      { from{opacity:0}                             to{opacity:1} }
+
+    /* ── Footer ── */
+    footer {
+      position: relative; z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 2rem; text-align: center;
+      color: var(--text-muted); font-size: 0.82rem;
+      margin-top: 4rem;
+    }
+    footer a { color: var(--red); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    .dev-links { display: flex; justify-content: center; gap: 1.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+    .dev-link {
+      display: flex; align-items: center; gap: 0.4rem;
+      color: var(--text-muted); text-decoration: none; font-size: 0.82rem;
+      transition: color 0.2s;
+    }
+    .dev-link:hover { color: var(--teal); }
+
+    /* Loading overlay */
+    .loading-overlay {
+      display: none; position: fixed; inset: 0; z-index: 999;
+      background: rgba(4,7,15,0.9); backdrop-filter: blur(8px);
+      align-items: center; justify-content: center; flex-direction: column; gap: 1.5rem;
+    }
+    .loading-overlay.show { display: flex; }
+    .spinner {
+      width: 70px; height: 70px;
+      border-radius: 50%;
+      border: 3px solid var(--border);
+      border-top-color: var(--red);
+      animation: spin-fast 0.8s linear infinite;
+    }
+    @keyframes spin-fast { to{transform:rotate(360deg)} }
+    .loading-text { font-family: var(--font-head); font-size: 1.1rem; color: var(--text-muted); }
+    .loading-sub  { font-size: 0.82rem; color: var(--text-muted); font-family: var(--font-mono); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-deep); }
+    ::-webkit-scrollbar-thumb { background: var(--red-dim); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- Particles -->
+<div class="particles" id="particles"></div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Analyzing Blood Sample…</div>
+  <div class="loading-sub" id="loadingStep">Preprocessing infrared image</div>
 </div>
-{% endblock %}
+
+<!-- Navigation -->
+<nav>
+  <a class="nav-brand" href="/">
+    <div class="drop"></div>
+    BloodSense<span style="color:var(--red)">AI</span>
+  </a>
+  <div class="nav-links">
+    <a href="/" class="active"><i class="fa fa-home"></i> Dashboard</a>
+    <a href="/history"><i class="fa fa-clock-rotate-left"></i> History
+      <span class="nav-badge">{{ stats.total }}</span>
+    </a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-eyebrow">
+    <div class="dot-live"></div>
+    VGG16 Deep Learning · 8 Blood Types · Infrared Imaging
+  </div>
+  <h1>
+    Detect <span class="accent">Blood Group</span><br>
+    with <span class="accent-teal">AI Precision</span>
+  </h1>
+  <p class="hero-sub">
+    Upload an infrared hand image and get your blood group detected instantly using
+    our trained deep learning model. All results saved to patient history.
+  </p>
+
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <span class="val">{{ stats.total }}</span>
+      <span class="lbl">Analyses Done</span>
+    </div>
+    <div class="hero-stat">
+      <span class="val">{{ stats.avg_confidence }}%</span>
+      <span class="lbl">Avg Confidence</span>
+    </div>
+    <div class="hero-stat">
+      <span class="val">8</span>
+      <span class="lbl">Blood Types</span>
+    </div>
+    <div class="hero-stat">
+      <span class="val">AI</span>
+      <span class="lbl">Powered</span>
+    </div>
+  </div>
+
+  <!-- Orbit animation -->
+  <div class="orbit-wrap">
+    <div class="orbit" style="inset:0;">
+      <div class="orbit-item" style="top:0;left:50%;transform:translate(-50%,0)">A+</div>
+      <div class="orbit-item" style="top:50%;right:0;transform:translate(0,-50%)">B+</div>
+      <div class="orbit-item" style="bottom:0;left:50%;transform:translate(-50%,0)">O+</div>
+      <div class="orbit-item" style="top:50%;left:0;transform:translate(0,-50%)">AB+</div>
+    </div>
+    <div class="orbit" style="inset:30px; animation-duration:20s; animation-direction:reverse;">
+      <div class="orbit-item" style="top:5px;left:50%;transform:translate(-50%,0)">A-</div>
+      <div class="orbit-item" style="top:50%;right:5px;transform:translate(0,-50%)">B-</div>
+      <div class="orbit-item" style="bottom:5px;left:50%;transform:translate(-50%,0)">O-</div>
+      <div class="orbit-item" style="top:50%;left:5px;transform:translate(0,-50%)">AB-</div>
+    </div>
+    <div class="orbit-center">🩸</div>
+  </div>
+
+  {% if not model_ready %}
+  <div class="alert alert-warn" style="max-width:600px;margin:0 auto 1rem;">
+    <i class="fa fa-triangle-exclamation"></i>
+    Model not loaded: {{ model_error }}. Please ensure the .keras model file is deployed.
+  </div>
+  {% endif %}
+</section>
+
+<!-- Main form -->
+<section class="section">
+  <div class="section-title">
+    <i class="fa fa-microscope" style="color:var(--red)"></i>
+    New Analysis
+    <span class="model-badge {% if model_ready %}model-ok{% else %}model-fail{% endif %}">
+      {% if model_ready %}● MODEL READY{% else %}● MODEL OFFLINE{% endif %}
+    </span>
+  </div>
+
+  {% if error_message %}
+  <div class="alert alert-error">
+    <i class="fa fa-circle-xmark"></i>
+    {{ error_message }}
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <form id="predictForm" action="/predict" method="POST" enctype="multipart/form-data">
+
+      <!-- Patient info -->
+      <div class="form-grid">
+        <div class="form-group">
+          <label><i class="fa fa-user"></i> Patient Name</label>
+          <input type="text" name="patient_name" placeholder="Enter full name" required/>
+        </div>
+        <div class="form-group">
+          <label><i class="fa fa-id-badge"></i> Age</label>
+          <input type="number" name="patient_age" placeholder="Age" min="1" max="120"/>
+        </div>
+        <div class="form-group">
+          <label><i class="fa fa-venus-mars"></i> Gender</label>
+          <select name="patient_gender">
+            <option value="Unknown">Prefer not to say</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label><i class="fa fa-thermometer-half"></i> Hand Surface Temperature (°C)</label>
+          <input type="hidden" name="temperature" id="tempInput" value="36.5"/>
+          <div class="temp-display">
+            <input type="range" min="25" max="45" step="0.1" value="36.5"
+                   id="tempSlider"
+                   oninput="document.getElementById('tempInput').value=this.value;document.getElementById('tempVal').textContent=parseFloat(this.value).toFixed(1)+'°C'"/>
+            <div class="temp-val" id="tempVal">36.5°C</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Image upload -->
+      <div class="form-group" style="margin-bottom:1.5rem;">
+        <label><i class="fa fa-camera-retro"></i> Infrared Hand Image</label>
+        <div class="upload-zone" id="dropZone" onclick="document.getElementById('imgInput').click()">
+          <input type="file" name="image" id="imgInput" accept=".jpg,.jpeg,.png,.webp,.bmp" required/>
+          <i class="fa fa-hand-holding-medical upload-icon" id="uploadIcon"></i>
+          <div class="upload-title" id="uploadTitle">Click or Drag & Drop</div>
+          <div class="upload-sub">Supports: JPG, PNG, WEBP, BMP · Max {{ max_upload_mb }}MB</div>
+          <img id="preview" class="upload-preview" alt="Preview"/>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="form-group" style="margin-bottom:0;">
+        <label><i class="fa fa-note-sticky"></i> Clinical Notes (optional)</label>
+        <textarea name="notes" rows="2" placeholder="Any relevant observations or clinical context…"></textarea>
+      </div>
+
+      <button type="submit" class="btn-analyze" {% if not model_ready %}disabled{% endif %}>
+        <i class="fa fa-dna"></i>
+        Analyze Blood Group
+        <i class="fa fa-arrow-right"></i>
+      </button>
+    </form>
+  </div>
+</section>
+
+<!-- Live stats -->
+<section class="section" style="padding-top:0;">
+  <div class="section-title"><i class="fa fa-chart-bar" style="color:var(--teal)"></i> Database Statistics</div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="icon">🧬</div>
+      <div class="num">{{ stats.total }}</div>
+      <div class="desc">Total Analyses</div>
+    </div>
+    <div class="stat-card">
+      <div class="icon">🎯</div>
+      <div class="num">{{ stats.avg_confidence }}%</div>
+      <div class="desc">Average Confidence</div>
+    </div>
+    <div class="stat-card">
+      <div class="icon">🔬</div>
+      <div class="num">VGG16</div>
+      <div class="desc">AI Architecture</div>
+    </div>
+    <div class="stat-card">
+      <div class="icon">⚡</div>
+      <div class="num">&lt;2s</div>
+      <div class="desc">Detection Speed</div>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section class="section" style="padding-top:0;">
+  <div class="section-title"><i class="fa fa-circle-question" style="color:var(--gold)"></i> How It Works</div>
+  <div class="how-grid">
+    <div class="how-step" style="animation-delay:0s">
+      <div class="how-num">1</div>
+      <h3>Capture Image</h3>
+      <p>Take an infrared photo of the patient's hand under proper IR lighting conditions.</p>
+    </div>
+    <div class="how-step" style="animation-delay:0.1s">
+      <div class="how-num">2</div>
+      <h3>Enter Details</h3>
+      <p>Input patient name, age, gender and hand surface temperature reading.</p>
+    </div>
+    <div class="how-step" style="animation-delay:0.2s">
+      <div class="how-num">3</div>
+      <h3>AI Analysis</h3>
+      <p>Our VGG16 model processes the infrared image and identifies vascular patterns.</p>
+    </div>
+    <div class="how-step" style="animation-delay:0.3s">
+      <div class="how-num">4</div>
+      <h3>Get Result</h3>
+      <p>Receive blood group prediction with confidence score and compatibility info.</p>
+    </div>
+    <div class="how-step" style="animation-delay:0.4s">
+      <div class="how-num">5</div>
+      <h3>Saved to History</h3>
+      <p>All results are automatically stored in the patient database for future reference.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Blood types reference -->
+<section class="section" style="padding-top:0;">
+  <div class="section-title"><i class="fa fa-droplet" style="color:var(--red)"></i> Blood Type Reference</div>
+  <div class="card">
+    <div class="btype-grid">
+      <div class="btype-badge"><div class="name">A+</div><div class="pct">~36% population</div></div>
+      <div class="btype-badge"><div class="name">A-</div><div class="pct">~6% population</div></div>
+      <div class="btype-badge"><div class="name">B+</div><div class="pct">~8.5% population</div></div>
+      <div class="btype-badge"><div class="name">B-</div><div class="pct">~1.5% population</div></div>
+      <div class="btype-badge"><div class="name">AB+</div><div class="pct">~3.4% population</div></div>
+      <div class="btype-badge"><div class="name">AB-</div><div class="pct">~0.6% population</div></div>
+      <div class="btype-badge"><div class="name">O+</div><div class="pct">~38% population</div></div>
+      <div class="btype-badge"><div class="name">O-</div><div class="pct">~7% population</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div>BloodSense<strong style="color:var(--red)">AI</strong> &copy; {{ current_year }} — Blood Group Detection using Infrared Imaging</div>
+  <div class="dev-links">
+    <a class="dev-link" href="mailto:rahulpatelanuppur@gmail.com"><i class="fa fa-envelope"></i> rahulpatelanuppur@gmail.com</a>
+    <a class="dev-link" href="https://github.com/RAHULPATEL2002" target="_blank"><i class="fa-brands fa-github"></i> RAHULPATEL2002</a>
+    <a class="dev-link" href="https://www.linkedin.com/in/rahul-patel-27b552250/" target="_blank"><i class="fa-brands fa-linkedin"></i> Rahul Patel</a>
+  </div>
+  <div style="margin-top:0.75rem;color:#3d4a63;font-size:0.75rem;">
+    ⚠️ For research and educational use. Always confirm with certified laboratory tests for medical decisions.
+  </div>
+</footer>
+
+<script>
+// ── Particles ──
+const container = document.getElementById('particles');
+for(let i=0;i<18;i++){
+  const p=document.createElement('div');
+  p.className='particle';
+  const s=Math.random()*8+4;
+  p.style.cssText=`
+    width:${s}px;height:${s}px;
+    left:${Math.random()*100}%;
+    animation-duration:${Math.random()*15+10}s;
+    animation-delay:${Math.random()*10}s;
+    opacity:0.4;
+  `;
+  container.appendChild(p);
+}
+
+// ── Drag & drop ──
+const zone=document.getElementById('dropZone');
+const input=document.getElementById('imgInput');
+const preview=document.getElementById('preview');
+const uploadIcon=document.getElementById('uploadIcon');
+const uploadTitle=document.getElementById('uploadTitle');
+
+zone.addEventListener('dragover',e=>{ e.preventDefault(); zone.classList.add('dragover'); });
+zone.addEventListener('dragleave',()=>zone.classList.remove('dragover'));
+zone.addEventListener('drop',e=>{
+  e.preventDefault(); zone.classList.remove('dragover');
+  const f=e.dataTransfer.files[0];
+  if(f){ showPreview(f); input.files=e.dataTransfer.files; }
+});
+input.addEventListener('change',()=>{ if(input.files[0]) showPreview(input.files[0]); });
+
+function showPreview(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    preview.src=e.target.result;
+    preview.style.display='block';
+    uploadIcon.style.display='none';
+    uploadTitle.textContent=file.name;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Loading ──
+const steps=['Preprocessing infrared image…','Running VGG16 model…','Computing confidence scores…','Saving patient record…'];
+let stepIdx=0;
+document.getElementById('predictForm').addEventListener('submit',function(e){
+  if(!this.checkValidity()) return;
+  const overlay=document.getElementById('loadingOverlay');
+  const stepEl=document.getElementById('loadingStep');
+  overlay.classList.add('show');
+  const iv=setInterval(()=>{
+    stepIdx=(stepIdx+1)%steps.length;
+    stepEl.textContent=steps[stepIdx];
+  },900);
+  setTimeout(()=>clearInterval(iv),8000);
+});
+</script>
+</body>
+</html>
