@@ -22,12 +22,12 @@ uploads/*
 static/uploads/*
 !static/uploads/.gitkeep
 
-# Model files (if too large, consider using Git LFS)
+# Model artifacts
 *.h5
-# Keep .keras files (needed for deployment)
-# *.keras
-# Keep .pkl files (needed for deployment)
-# *.pkl
+*.keras
+!blood_group_model_efficientnet.tflite
+!class_indices.pkl
+!model_metadata.json
 
 # IDE
 .vscode/
@@ -48,12 +48,21 @@ logs/
 *.tmp
 requirements_temp.txt
 
-# Data folders - now included in repository
-# data/
-# dataset_folder/
+# Data folders
+data/
+dataset_folder/
 
-# PowerPoint and documents - allow specific files
-# *.pptx
+# Generated app data
+patient_history.db
+classification_report.txt
+confusion_matrix.npy
+confusion_matrix.png
+history.pkl
+
+# Large documents and presentations
+*.pptx
+*.pdf
 *.docx
-# Allow PDF files (documentation)
-# *.pdf
+
+# Vercel
+.vercel/
