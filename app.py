@@ -252,28 +252,40 @@ def get_all_records():
             cur.execute("SELECT * FROM patient_records ORDER BY created_at DESC")
             rows = [dict(r) for r in cur.fetchall()]
             con.close()
+        # Normalize created_at to string for both backends
+        for r in rows:
+            if hasattr(r.get("created_at"), "strftime"):
+                r["created_at"] = r["created_at"].strftime("%Y-%m-%d %H:%M:%S")
         return rows
     except Exception as e:
         print(f"get_all_records error: {e}")
         return []
 
 def get_record_by_id(record_id):
-    if _USE_POSTGRES:
-        conn = _get_pg_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM patient_records WHERE id = %s", (record_id,))
-        row = cur.fetchone()
-        cur.close()
-        conn.close()
-        return dict(row) if row else None
-    else:
-        con = sqlite3.connect(DB_PATH)
-        con.row_factory = sqlite3.Row
-        cur = con.cursor()
-        cur.execute("SELECT * FROM patient_records WHERE id = ?", (record_id,))
-        row = cur.fetchone()
-        con.close()
-        return dict(row) if row else None
+    try:
+        if _USE_POSTGRES:
+            conn = _get_pg_conn()
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM patient_records WHERE id = %s", (record_id,))
+            row = cur.fetchone()
+            cur.close()
+            conn.close()
+            result = dict(row) if row else None
+        else:
+            con = sqlite3.connect(DB_PATH)
+            con.row_factory = sqlite3.Row
+            cur = con.cursor()
+            cur.execute("SELECT * FROM patient_records WHERE id = ?", (record_id,))
+            row = cur.fetchone()
+            con.close()
+            result = dict(row) if row else None
+        # Normalize created_at to string
+        if result and hasattr(result.get("created_at"), "strftime"):
+            result["created_at"] = result["created_at"].strftime("%Y-%m-%d %H:%M:%S")
+        return result
+    except Exception as e:
+        print(f"get_record_by_id error: {e}")
+        return None
 
 def delete_record(record_id):
     if _USE_POSTGRES:
