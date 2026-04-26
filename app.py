@@ -202,48 +202,60 @@ def init_db():
         con.commit()
         con.close()
 
-init_db()
+try:
+    init_db()
+    print("Database initialized successfully")
+except Exception as e:
+    print(f"Database init error (non-fatal): {e}")
 
 def save_record(patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes=""):
-    if _USE_POSTGRES:
-        conn = _get_pg_conn()
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO patient_records (patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
-        """, (patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes))
-        record_id = cur.fetchone()["id"]
-        conn.commit()
-        cur.close()
-        conn.close()
-    else:
-        con = sqlite3.connect(DB_PATH)
-        cur = con.cursor()
-        cur.execute("""
-            INSERT INTO patient_records (patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes))
-        con.commit()
-        record_id = cur.lastrowid
-        con.close()
-    return record_id
+    try:
+        if _USE_POSTGRES:
+            conn = _get_pg_conn()
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO patient_records (patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+            """, (patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes))
+            record_id = cur.fetchone()["id"]
+            conn.commit()
+            cur.close()
+            conn.close()
+        else:
+            con = sqlite3.connect(DB_PATH)
+            cur = con.cursor()
+            cur.execute("""
+                INSERT INTO patient_records (patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes))
+            con.commit()
+            record_id = cur.lastrowid
+            con.close()
+        return record_id
+    except Exception as e:
+        print(f"save_record error: {e}")
+        return None
 
 def get_all_records():
-    if _USE_POSTGRES:
-        conn = _get_pg_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM patient_records ORDER BY created_at DESC")
-        rows = [dict(r) for r in cur.fetchall()]
-        cur.close()
-        conn.close()
-    else:
-        con = sqlite3.connect(DB_PATH)
-        con.row_factory = sqlite3.Row
-        cur = con.cursor()
-        cur.execute("SELECT * FROM patient_records ORDER BY created_at DESC")
-        rows = [dict(r) for r in cur.fetchall()]
-        con.close()
-    return rows
+    try:
+        if _USE_POSTGRES:
+            conn = _get_pg_conn()
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM patient_records ORDER BY created_at DESC")
+            rows = [dict(r) for r in cur.fetchall()]
+            cur.close()
+            conn.close()
+        else:
+            con = sqlite3.connect(DB_PATH)
+            con.row_factory = sqlite3.Row
+            cur = con.cursor()
+            cur.execute("SELECT * FROM patient_records ORDER BY created_at DESC")
+            rows = [dict(r) for r in cur.fetchall()]
+            con.close()
+        return rows
+    except Exception as e:
+        print(f"get_all_records error: {e}")
+        return []
 
 def get_record_by_id(record_id):
     if _USE_POSTGRES:
@@ -279,28 +291,33 @@ def delete_record(record_id):
         con.close()
 
 def get_stats():
-    if _USE_POSTGRES:
-        conn = _get_pg_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) as cnt FROM patient_records")
-        total = cur.fetchone()["cnt"]
-        cur.execute("SELECT blood_type, COUNT(*) as cnt FROM patient_records GROUP BY blood_type ORDER BY cnt DESC")
-        by_type = [{"blood_type": r["blood_type"], "count": r["cnt"]} for r in cur.fetchall()]
-        cur.execute("SELECT AVG(confidence)*100 FROM patient_records")
-        avg_conf = cur.fetchone()["avg"] or 0
-        cur.close()
-        conn.close()
-    else:
-        con = sqlite3.connect(DB_PATH)
-        cur = con.cursor()
-        cur.execute("SELECT COUNT(*) FROM patient_records")
-        total = cur.fetchone()[0]
-        cur.execute("SELECT blood_type, COUNT(*) as cnt FROM patient_records GROUP BY blood_type ORDER BY cnt DESC")
-        by_type = [{"blood_type": r[0], "count": r[1]} for r in cur.fetchall()]
-        cur.execute("SELECT AVG(confidence)*100 FROM patient_records")
-        avg_conf = cur.fetchone()[0] or 0
-        con.close()
-    return {"total": total, "by_type": by_type, "avg_confidence": round(avg_conf, 1)}
+    try:
+        if _USE_POSTGRES:
+            conn = _get_pg_conn()
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) as cnt FROM patient_records")
+            total = cur.fetchone()["cnt"]
+            cur.execute("SELECT blood_type, COUNT(*) as cnt FROM patient_records GROUP BY blood_type ORDER BY cnt DESC")
+            by_type = [{"blood_type": r["blood_type"], "count": r["cnt"]} for r in cur.fetchall()]
+            cur.execute("SELECT AVG(confidence)*100 AS avg_conf FROM patient_records")
+            row = cur.fetchone()
+            avg_conf = (row["avg_conf"] or 0) if row else 0
+            cur.close()
+            conn.close()
+        else:
+            con = sqlite3.connect(DB_PATH)
+            cur = con.cursor()
+            cur.execute("SELECT COUNT(*) FROM patient_records")
+            total = cur.fetchone()[0]
+            cur.execute("SELECT blood_type, COUNT(*) as cnt FROM patient_records GROUP BY blood_type ORDER BY cnt DESC")
+            by_type = [{"blood_type": r[0], "count": r[1]} for r in cur.fetchall()]
+            cur.execute("SELECT AVG(confidence)*100 FROM patient_records")
+            avg_conf = cur.fetchone()[0] or 0
+            con.close()
+        return {"total": total, "by_type": by_type, "avg_confidence": round(avg_conf, 1)}
+    except Exception as e:
+        print(f"get_stats error: {e}")
+        return {"total": 0, "by_type": [], "avg_confidence": 0.0}
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 def allowed_file(filename: str) -> bool:
