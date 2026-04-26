@@ -3,7 +3,17 @@
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "includeFiles": [
+          "app.py",
+          "blood_group_model_efficientnet.tflite",
+          "class_indices.pkl",
+          "model_metadata.json",
+          "templates/**",
+          "static/**"
+        ]
+      }
     }
   ],
   "routes": [

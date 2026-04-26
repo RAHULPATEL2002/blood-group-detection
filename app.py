@@ -17,14 +17,16 @@ app = Flask(__name__)
 
 # ── Paths & Config ──────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent
-MODEL_PATH = os.getenv("BLOOD_GROUP_MODEL", "blood_group_model_efficientnet.tflite")
-CLASS_INDICES_PATH = os.getenv("CLASS_INDICES_PATH", "class_indices.pkl")
-MODEL_METADATA_PATH = os.getenv("MODEL_METADATA_PATH", "model_metadata.json")
+MODEL_PATH = os.getenv("BLOOD_GROUP_MODEL", str(PROJECT_ROOT / "blood_group_model_efficientnet.tflite"))
+CLASS_INDICES_PATH = os.getenv("CLASS_INDICES_PATH", str(PROJECT_ROOT / "class_indices.pkl"))
+MODEL_METADATA_PATH = os.getenv("MODEL_METADATA_PATH", str(PROJECT_ROOT / "model_metadata.json"))
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "8"))
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
-UPLOAD_FOLDER = PROJECT_ROOT / "static" / "uploads"
+# Vercel has a read-only filesystem except /tmp
+_IS_VERCEL = os.getenv("VERCEL") == "1"
+UPLOAD_FOLDER = Path("/tmp/uploads") if _IS_VERCEL else PROJECT_ROOT / "static" / "uploads"
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
-DB_PATH = PROJECT_ROOT / "patient_history.db"
+DB_PATH = Path("/tmp/patient_history.db") if _IS_VERCEL else PROJECT_ROOT / "patient_history.db"
 
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 
