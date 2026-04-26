@@ -53,11 +53,14 @@ class LiteModel:
     @staticmethod
     def _load_interpreter(model_path: str):
         try:
-            from tflite_runtime.interpreter import Interpreter
+            from ai_edge_litert.interpreter import Interpreter
         except ImportError:
-            import tensorflow as tf
+            try:
+                from tflite_runtime.interpreter import Interpreter
+            except ImportError:
+                import tensorflow as tf
 
-            Interpreter = tf.lite.Interpreter
+                Interpreter = tf.lite.Interpreter
 
         interpreter = Interpreter(model_path=model_path)
         interpreter.allocate_tensors()
