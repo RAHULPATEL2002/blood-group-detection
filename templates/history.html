@@ -137,6 +137,32 @@
     ::-webkit-scrollbar-track{background:var(--bg-deep);}
     ::-webkit-scrollbar-thumb{background:var(--red-dim);border-radius:3px;}
     @media(max-width:768px){th:nth-child(4),td:nth-child(4),th:nth-child(5),td:nth-child(5){display:none;}}
+
+    /* ── Hamburger ── */
+    .nav-hamburger{display:none;background:none;border:1px solid var(--border);color:var(--text-main);padding:.45rem .75rem;border-radius:8px;cursor:pointer;font-size:1.1rem;transition:border-color .2s,color .2s;}
+    .nav-hamburger:hover{border-color:var(--red);color:var(--red);}
+
+    /* ── Mobile ── */
+    @media(max-width:680px){
+      nav{padding:0 1rem;flex-wrap:wrap;height:auto;min-height:60px;}
+      .nav-brand{font-size:1.2rem;padding:.9rem 0;}
+      .nav-brand .drop{width:26px;height:26px;}
+      .nav-hamburger{display:flex;align-items:center;}
+      .nav-links{display:none;flex-direction:column;width:100%;padding:.5rem 0 .75rem;border-top:1px solid var(--border);gap:.25rem;}
+      .nav-links.open{display:flex;}
+      .nav-links a{padding:.75rem .75rem;font-size:.9rem;}
+
+      .container{padding:1rem .85rem;}
+      .page-title{font-size:2rem;}
+      .stats-row{grid-template-columns:repeat(2,1fr);}
+      .filter-bar{flex-direction:column;gap:.75rem;}
+      .filter-bar input,.filter-bar select{width:100%;}
+      table{font-size:.78rem;}
+      th,td{padding:.5rem .4rem;}
+      th:nth-child(3),td:nth-child(3){display:none;}
+      .badge{font-size:.65rem;padding:.2rem .45rem;}
+      footer{padding:1rem .85rem;}
+    }
   </style>
 </head>
 <body>
@@ -145,7 +171,10 @@
     <div class="drop"></div>
     BloodSense<span style="color:var(--red)">AI</span>
   </a>
-  <div class="nav-links">
+  <button class="nav-hamburger" id="navToggle" aria-label="Toggle menu">
+    <i class="fa fa-bars" id="navIcon"></i>
+  </button>
+  <div class="nav-links" id="navLinks">
     <a href="/"><i class="fa fa-home"></i> Dashboard</a>
     <a href="/history" class="active"><i class="fa fa-clock-rotate-left"></i> History</a>
   </div>
@@ -307,6 +336,15 @@ async function deleteRecord(id){
     setTimeout(()=>row.remove(),300);
   }
 }
+
+// ── Hamburger ──
+const navToggle = document.getElementById('navToggle');
+const navLinks  = document.getElementById('navLinks');
+const navIcon   = document.getElementById('navIcon');
+navToggle.addEventListener('click', () => {
+  navLinks.classList.toggle('open');
+  navIcon.className = navLinks.classList.contains('open') ? 'fa fa-xmark' : 'fa fa-bars';
+});
 </script>
 </body>
 </html>

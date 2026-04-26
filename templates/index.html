@@ -437,6 +437,70 @@
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: var(--bg-deep); }
     ::-webkit-scrollbar-thumb { background: var(--red-dim); border-radius: 3px; }
+
+    /* ── Hamburger ── */
+    .nav-hamburger {
+      display: none;
+      background: none; border: 1px solid var(--border);
+      color: var(--text-main); padding: 0.45rem 0.75rem;
+      border-radius: 8px; cursor: pointer; font-size: 1.1rem;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .nav-hamburger:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── Mobile ── */
+    @media (max-width: 680px) {
+      nav { padding: 0 1rem; flex-wrap: wrap; height: auto; min-height: 60px; }
+      .nav-brand { font-size: 1.2rem; padding: 0.9rem 0; }
+      .nav-brand .drop { width: 26px; height: 26px; }
+      .nav-hamburger { display: flex; align-items: center; }
+      .nav-links {
+        display: none; flex-direction: column;
+        width: 100%; padding: 0.5rem 0 0.75rem;
+        border-top: 1px solid var(--border); gap: 0.25rem;
+      }
+      .nav-links.open { display: flex; }
+      .nav-links a { padding: 0.75rem 0.75rem; font-size: 0.9rem; }
+
+      .hero { padding: 2.5rem 1rem 1.5rem; }
+      .hero-eyebrow { font-size: 0.65rem; padding: 0.3rem 0.75rem; }
+      .hero h1 { font-size: clamp(2rem, 8vw, 2.8rem); }
+      .hero-sub { font-size: 0.9rem; }
+      .hero-stats { gap: 1.2rem; }
+      .hero-stat .val { font-size: 1.6rem; }
+      .hero-stat .lbl { font-size: 0.7rem; }
+
+      .orbit-wrap { width: 200px; height: 200px; margin-bottom: 2rem; }
+      .orbit-center { width: 70px; height: 70px; font-size: 1rem; }
+      .orbit-item { width: 30px; height: 30px; font-size: 0.62rem; }
+
+      .section { padding: 1.25rem 0.85rem; }
+      .section-title { font-size: 1.3rem; }
+      .card { padding: 1.25rem; }
+      .upload-zone { padding: 1.5rem 1rem; }
+      .upload-icon { font-size: 2rem; }
+
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .stat-card { padding: 1.1rem; }
+      .stat-card .num { font-size: 1.6rem; }
+
+      .how-grid { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+      .how-step { padding: 1.1rem; }
+      .how-num { width: 38px; height: 38px; font-size: 1rem; }
+
+      .temp-display { flex-direction: column; gap: 0.5rem; align-items: stretch; }
+      .temp-val { text-align: center; min-width: unset; }
+      .btn-analyze { font-size: 0.95rem; padding: 0.85rem 1.5rem; }
+
+      footer { padding: 1.5rem 1rem; }
+      .dev-links { gap: 0.75rem; flex-direction: column; align-items: center; }
+    }
+    @media (max-width: 380px) {
+      .how-grid { grid-template-columns: 1fr; }
+      .hero-stats { gap: 0.8rem; }
+      .hero-stat .val { font-size: 1.4rem; }
+      .btype-grid { grid-template-columns: repeat(2, 1fr); }
+    }
   </style>
 </head>
 <body>
@@ -457,7 +521,10 @@
     <div class="drop"></div>
     BloodSense<span style="color:var(--red)">AI</span>
   </a>
-  <div class="nav-links">
+  <button class="nav-hamburger" id="navToggle" aria-label="Toggle menu">
+    <i class="fa fa-bars" id="navIcon"></i>
+  </button>
+  <div class="nav-links" id="navLinks">
     <a href="/" class="active"><i class="fa fa-home"></i> Dashboard</a>
     <a href="/history"><i class="fa fa-clock-rotate-left"></i> History
       <span class="nav-badge">{{ stats.total }}</span>
@@ -734,6 +801,18 @@ function showPreview(file){
   };
   reader.readAsDataURL(file);
 }
+
+// ── Hamburger ──
+const navToggle = document.getElementById('navToggle');
+const navLinks  = document.getElementById('navLinks');
+const navIcon   = document.getElementById('navIcon');
+navToggle.addEventListener('click', () => {
+  navLinks.classList.toggle('open');
+  navIcon.className = navLinks.classList.contains('open') ? 'fa fa-xmark' : 'fa fa-bars';
+});
+document.querySelectorAll('.nav-links a').forEach(a =>
+  a.addEventListener('click', () => { navLinks.classList.remove('open'); navIcon.className='fa fa-bars'; })
+);
 
 // ── Loading ──
 const steps=['Preprocessing infrared image…','Running VGG16 model…','Computing confidence scores…','Saving patient record…'];

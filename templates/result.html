@@ -212,6 +212,36 @@
     ::-webkit-scrollbar{width:6px;}
     ::-webkit-scrollbar-track{background:var(--bg-deep);}
     ::-webkit-scrollbar-thumb{background:var(--red-dim);border-radius:3px;}
+
+    /* ── Hamburger ── */
+    .nav-hamburger{display:none;background:none;border:1px solid var(--border);color:var(--text-main);padding:.45rem .75rem;border-radius:8px;cursor:pointer;font-size:1.1rem;transition:border-color .2s,color .2s;}
+    .nav-hamburger:hover{border-color:var(--red);color:var(--red);}
+
+    /* ── Mobile ── */
+    @media(max-width:680px){
+      nav{padding:0 1rem;flex-wrap:wrap;height:auto;min-height:60px;}
+      .nav-brand{font-size:1.2rem;padding:.9rem 0;}
+      .nav-brand .drop{width:26px;height:26px;}
+      .nav-hamburger{display:flex;align-items:center;}
+      .nav-links{display:none;flex-direction:column;width:100%;padding:.5rem 0 .75rem;border-top:1px solid var(--border);gap:.25rem;}
+      .nav-links.open{display:flex;}
+      .nav-links a{padding:.75rem .75rem;font-size:.9rem;}
+
+      .result-hero{padding:2rem 1rem 1.5rem;}
+      .result-hero .patient-pill{font-size:.65rem;padding:.3rem .75rem;}
+      .blood-type-display .btype{font-size:5rem;}
+      .blood-type-display .btype-label{font-size:.8rem;}
+
+      .section{padding:1.25rem .85rem;}
+      .section-title{font-size:1.3rem;}
+      .card{padding:1.25rem;}
+      .result-grid{grid-template-columns:1fr !important;}
+
+      .info-row{flex-direction:column;gap:.5rem;}
+      .info-val{text-align:left;}
+
+      footer{padding:1rem .85rem;}
+    }
   </style>
 </head>
 <body>
@@ -220,7 +250,10 @@
     <div class="drop"></div>
     BloodSense<span style="color:var(--red)">AI</span>
   </a>
-  <div class="nav-links">
+  <button class="nav-hamburger" id="navToggle" aria-label="Toggle menu">
+    <i class="fa fa-bars" id="navIcon"></i>
+  </button>
+  <div class="nav-links" id="navLinks">
     <a href="/"><i class="fa fa-home"></i> New Analysis</a>
     <a href="/history"><i class="fa fa-clock-rotate-left"></i> History</a>
   </div>
@@ -343,6 +376,15 @@
 </footer>
 
 <script>
+// ── Hamburger ──
+const navToggle = document.getElementById('navToggle');
+const navLinks  = document.getElementById('navLinks');
+const navIcon   = document.getElementById('navIcon');
+navToggle.addEventListener('click', () => {
+  navLinks.classList.toggle('open');
+  navIcon.className = navLinks.classList.contains('open') ? 'fa fa-xmark' : 'fa fa-bars';
+});
+
 // Animate confidence bar on load
 window.addEventListener('load',()=>{
   setTimeout(()=>{
