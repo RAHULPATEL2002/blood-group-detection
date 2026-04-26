@@ -8,6 +8,13 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+# ── Database backend detection ───────────────────────────────────────────────
+DATABASE_URL = os.getenv("DATABASE_URL")   # Set this in Vercel env vars
+_USE_POSTGRES = bool(DATABASE_URL)
+if _USE_POSTGRES:
+    import psycopg2
+    import psycopg2.extras
+
 import numpy as np
 from flask import Flask, jsonify, render_template, request
 from PIL import Image
@@ -148,76 +155,151 @@ if os.path.exists(MODEL_METADATA_PATH):
         print(f"Metadata load warning: {exc}")
 
 # ── Database Setup ───────────────────────────────────────────────────────────
+def _get_pg_conn():
+    conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+    return conn
+
 def init_db():
-    con = sqlite3.connect(DB_PATH)
-    cur = con.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS patient_records (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            patient_id  TEXT NOT NULL,
-            name        TEXT NOT NULL,
-            age         INTEGER,
-            gender      TEXT,
-            blood_type  TEXT NOT NULL,
-            confidence  REAL,
-            temperature REAL,
-            image_path  TEXT,
-            notes       TEXT,
-            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    con.commit()
-    con.close()
+    if _USE_POSTGRES:
+        conn = _get_pg_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS patient_records (
+                id          SERIAL PRIMARY KEY,
+                patient_id  TEXT NOT NULL,
+                name        TEXT NOT NULL,
+                age         INTEGER,
+                gender      TEXT,
+                blood_type  TEXT NOT NULL,
+                confidence  REAL,
+                temperature REAL,
+                image_path  TEXT,
+                notes       TEXT,
+                created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+        cur.close()
+        conn.close()
+    else:
+        con = sqlite3.connect(DB_PATH)
+        cur = con.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS patient_records (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                patient_id  TEXT NOT NULL,
+                name        TEXT NOT NULL,
+                age         INTEGER,
+                gender      TEXT,
+                blood_type  TEXT NOT NULL,
+                confidence  REAL,
+                temperature REAL,
+                image_path  TEXT,
+                notes       TEXT,
+                created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        con.commit()
+        con.close()
 
 init_db()
 
 def save_record(patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes=""):
-    con = sqlite3.connect(DB_PATH)
-    cur = con.cursor()
-    cur.execute("""
-        INSERT INTO patient_records (patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes))
-    con.commit()
-    record_id = cur.lastrowid
-    con.close()
+    if _USE_POSTGRES:
+        conn = _get_pg_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO patient_records (patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+        """, (patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes))
+        record_id = cur.fetchone()["id"]
+        conn.commit()
+        cur.close()
+        conn.close()
+    else:
+        con = sqlite3.connect(DB_PATH)
+        cur = con.cursor()
+        cur.execute("""
+            INSERT INTO patient_records (patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (patient_id, name, age, gender, blood_type, confidence, temperature, image_path, notes))
+        con.commit()
+        record_id = cur.lastrowid
+        con.close()
     return record_id
 
 def get_all_records():
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-    cur = con.cursor()
-    cur.execute("SELECT * FROM patient_records ORDER BY created_at DESC")
-    rows = [dict(r) for r in cur.fetchall()]
-    con.close()
+    if _USE_POSTGRES:
+        conn = _get_pg_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM patient_records ORDER BY created_at DESC")
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close()
+        conn.close()
+    else:
+        con = sqlite3.connect(DB_PATH)
+        con.row_factory = sqlite3.Row
+        cur = con.cursor()
+        cur.execute("SELECT * FROM patient_records ORDER BY created_at DESC")
+        rows = [dict(r) for r in cur.fetchall()]
+        con.close()
     return rows
 
 def get_record_by_id(record_id):
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-    cur = con.cursor()
-    cur.execute("SELECT * FROM patient_records WHERE id = ?", (record_id,))
-    row = cur.fetchone()
-    con.close()
-    return dict(row) if row else None
+    if _USE_POSTGRES:
+        conn = _get_pg_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM patient_records WHERE id = %s", (record_id,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return dict(row) if row else None
+    else:
+        con = sqlite3.connect(DB_PATH)
+        con.row_factory = sqlite3.Row
+        cur = con.cursor()
+        cur.execute("SELECT * FROM patient_records WHERE id = ?", (record_id,))
+        row = cur.fetchone()
+        con.close()
+        return dict(row) if row else None
 
 def delete_record(record_id):
-    con = sqlite3.connect(DB_PATH)
-    cur = con.cursor()
-    cur.execute("DELETE FROM patient_records WHERE id = ?", (record_id,))
-    con.commit()
-    con.close()
+    if _USE_POSTGRES:
+        conn = _get_pg_conn()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM patient_records WHERE id = %s", (record_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+    else:
+        con = sqlite3.connect(DB_PATH)
+        cur = con.cursor()
+        cur.execute("DELETE FROM patient_records WHERE id = ?", (record_id,))
+        con.commit()
+        con.close()
 
 def get_stats():
-    con = sqlite3.connect(DB_PATH)
-    cur = con.cursor()
-    cur.execute("SELECT COUNT(*) FROM patient_records")
-    total = cur.fetchone()[0]
-    cur.execute("SELECT blood_type, COUNT(*) as cnt FROM patient_records GROUP BY blood_type ORDER BY cnt DESC")
-    by_type = [{"blood_type": r[0], "count": r[1]} for r in cur.fetchall()]
-    cur.execute("SELECT AVG(confidence)*100 FROM patient_records")
-    avg_conf = cur.fetchone()[0] or 0
-    con.close()
+    if _USE_POSTGRES:
+        conn = _get_pg_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) as cnt FROM patient_records")
+        total = cur.fetchone()["cnt"]
+        cur.execute("SELECT blood_type, COUNT(*) as cnt FROM patient_records GROUP BY blood_type ORDER BY cnt DESC")
+        by_type = [{"blood_type": r["blood_type"], "count": r["cnt"]} for r in cur.fetchall()]
+        cur.execute("SELECT AVG(confidence)*100 FROM patient_records")
+        avg_conf = cur.fetchone()["avg"] or 0
+        cur.close()
+        conn.close()
+    else:
+        con = sqlite3.connect(DB_PATH)
+        cur = con.cursor()
+        cur.execute("SELECT COUNT(*) FROM patient_records")
+        total = cur.fetchone()[0]
+        cur.execute("SELECT blood_type, COUNT(*) as cnt FROM patient_records GROUP BY blood_type ORDER BY cnt DESC")
+        by_type = [{"blood_type": r[0], "count": r[1]} for r in cur.fetchall()]
+        cur.execute("SELECT AVG(confidence)*100 FROM patient_records")
+        avg_conf = cur.fetchone()[0] or 0
+        con.close()
     return {"total": total, "by_type": by_type, "avg_confidence": round(avg_conf, 1)}
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
