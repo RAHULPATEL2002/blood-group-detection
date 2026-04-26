@@ -1,34 +1,23 @@
-from tensorflow.keras.models import load_model
-import os
+from pathlib import Path
 
-def convert_keras_to_json(model_path, json_path, weights_path):
-    try:
-        # Load the existing .keras model
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"❌ Model file '{model_path}' not found.")
-        
-        model = load_model(model_path, compile=False)
+import tensorflow as tf
 
-        # Convert the model architecture to JSON
-        model_json = model.to_json()
-        
-        # Save the JSON model structure
-        with open(json_path, "w") as json_file:
-            json_file.write(model_json)
 
-        # Save the model weights separately
-        if not weights_path.endswith(".weights.h5"):
-            raise ValueError("❌ Weights file must end with '.weights.h5'")
-        
-        model.save_weights(weights_path)
-        print("✅ Model successfully converted to JSON format and weights saved!")
+SOURCE_MODEL = Path("blood_group_model_efficientnet.keras")
+TARGET_MODEL = Path("blood_group_model_efficientnet.tflite")
 
-    except Exception as e:
-        print(f"❌ Error: {e}")
+
+def convert_keras_to_tflite(source_model: Path = SOURCE_MODEL, target_model: Path = TARGET_MODEL) -> None:
+    if not source_model.exists():
+        raise FileNotFoundError(f"Model file not found: {source_model}")
+
+    model = tf.keras.models.load_model(source_model, compile=False)
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    tflite_model = converter.convert()
+    target_model.write_bytes(tflite_model)
+    print(f"Saved TFLite model to {target_model} ({target_model.stat().st_size / 1024 / 1024:.2f} MB)")
+
 
 if __name__ == "__main__":
-    convert_keras_to_json(
-        model_path="blood_group_model_vgg16.keras",
-        json_path="model.json",
-        weights_path="model_weights.weights.h5"
-    )
+    convert_keras_to_tflite()

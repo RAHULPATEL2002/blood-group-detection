@@ -1,0 +1,28 @@
+{
+  "model_type": "EfficientNetB0",
+  "image_size": [
+    224,
+    224
+  ],
+  "preprocessing": "efficientnet",
+  "raw_class_names": [
+    "A Nageative",
+    "A Positive",
+    "AB Negative",
+    "AB Positive",
+    "B Negative",
+    "B Positive",
+    "O Negative",
+    "O Positive"
+  ],
+  "display_class_names": [
+    "A Negative",
+    "A Positive",
+    "AB Negative",
+    "AB Positive",
+    "B Negative",
+    "B Positive",
+    "O Negative",
+    "O Positive"
+  ]
+}

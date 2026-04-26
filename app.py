@@ -4,21 +4,22 @@ import os
 import pickle
 import sqlite3
 import uuid
+import json
 from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 from flask import Flask, jsonify, render_template, request
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
+from PIL import Image
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
 # ── Paths & Config ──────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent
-MODEL_PATH = os.getenv("BLOOD_GROUP_MODEL", "blood_group_model_vgg16.keras")
+MODEL_PATH = os.getenv("BLOOD_GROUP_MODEL", "blood_group_model_efficientnet.tflite")
 CLASS_INDICES_PATH = os.getenv("CLASS_INDICES_PATH", "class_indices.pkl")
+MODEL_METADATA_PATH = os.getenv("MODEL_METADATA_PATH", "model_metadata.json")
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "8"))
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 UPLOAD_FOLDER = PROJECT_ROOT / "static" / "uploads"
@@ -28,6 +29,64 @@ DB_PATH = PROJECT_ROOT / "patient_history.db"
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 
 DEFAULT_CLASS_LABELS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+CLASS_DISPLAY_NAME_MAP = {
+    "A Nageative": "A Negative",
+    "A Positive": "A Positive",
+    "AB Negative": "AB Negative",
+    "AB Positive": "AB Positive",
+    "B Negative": "B Negative",
+    "B Positive": "B Positive",
+    "O Negative": "O Negative",
+    "O Positive": "O Positive",
+}
+MODEL_IMAGE_SIZE = (128, 128)
+MODEL_PREPROCESSING = "rescale_255"
+
+
+class LiteModel:
+    def __init__(self, model_path: str):
+        self.model_path = model_path
+        self.interpreter = self._load_interpreter(model_path)
+        self.input_details = self.interpreter.get_input_details()
+        self.output_details = self.interpreter.get_output_details()
+
+    @staticmethod
+    def _load_interpreter(model_path: str):
+        try:
+            from tflite_runtime.interpreter import Interpreter
+        except ImportError:
+            import tensorflow as tf
+
+            Interpreter = tf.lite.Interpreter
+
+        interpreter = Interpreter(model_path=model_path)
+        interpreter.allocate_tensors()
+        return interpreter
+
+    def predict(self, batch: np.ndarray) -> np.ndarray:
+        input_detail = self.input_details[0]
+        output_detail = self.output_details[0]
+
+        if input_detail["dtype"] == np.float32:
+            input_batch = batch.astype(np.float32)
+        else:
+            scale, zero_point = input_detail["quantization"]
+            if scale == 0:
+                input_batch = batch.astype(input_detail["dtype"])
+            else:
+                input_batch = np.round(batch / scale + zero_point).astype(input_detail["dtype"])
+
+        self.interpreter.set_tensor(input_detail["index"], input_batch)
+        self.interpreter.invoke()
+        output = self.interpreter.get_tensor(output_detail["index"])
+
+        if output_detail["dtype"] != np.float32:
+            scale, zero_point = output_detail["quantization"]
+            if scale != 0:
+                output = (output.astype(np.float32) - zero_point) * scale
+            else:
+                output = output.astype(np.float32)
+        return output
 
 # Blood type compatibility data
 BLOOD_COMPATIBILITY = {
@@ -55,10 +114,10 @@ BLOOD_FACTS = {
 # ── Model Loading ────────────────────────────────────────────────────────────
 MODEL_ERROR: str | None = None
 try:
-    model = load_model(MODEL_PATH)
-    print(f"✅ Model loaded from {MODEL_PATH}")
+    model = LiteModel(MODEL_PATH)
+    print(f"Model loaded from {MODEL_PATH}")
 except Exception as exc:
-    print(f"❌ Model load error: {exc}")
+    print(f"Model load error: {exc}")
     MODEL_ERROR = str(exc)
     model = None
 
@@ -66,9 +125,22 @@ class_labels: dict[int, str] = {}
 if os.path.exists(CLASS_INDICES_PATH):
     with open(CLASS_INDICES_PATH, "rb") as fh:
         idx = pickle.load(fh)
-        class_labels = {v: k for k, v in idx.items()}
+        class_labels = {v: CLASS_DISPLAY_NAME_MAP.get(k, k) for k, v in idx.items()}
 if not class_labels:
     class_labels = {i: lbl for i, lbl in enumerate(DEFAULT_CLASS_LABELS)}
+
+if os.path.exists(MODEL_METADATA_PATH):
+    try:
+        metadata = json.loads(Path(MODEL_METADATA_PATH).read_text(encoding="utf-8"))
+        image_size = metadata.get("image_size")
+        if isinstance(image_size, list) and len(image_size) == 2:
+            MODEL_IMAGE_SIZE = (int(image_size[0]), int(image_size[1]))
+        MODEL_PREPROCESSING = metadata.get("preprocessing", MODEL_PREPROCESSING)
+        display_names = metadata.get("display_class_names")
+        if isinstance(display_names, list) and display_names:
+            class_labels = {i: name for i, name in enumerate(display_names)}
+    except Exception as exc:
+        print(f"Metadata load warning: {exc}")
 
 # ── Database Setup ───────────────────────────────────────────────────────────
 def init_db():
@@ -163,6 +235,12 @@ def build_confidence_summary(probabilities: np.ndarray) -> list[dict]:
         for i, s in indexed[:4]
     ]
 
+
+def preprocess_for_model(img_array: np.ndarray) -> np.ndarray:
+    if MODEL_PREPROCESSING == "efficientnet":
+        return img_array.astype("float32")
+    return img_array.astype("float32") / 255.0
+
 def temperature_note(val: float) -> str:
     if val < 30:
         return "⚠️ Below typical hand surface range. Please recheck sensor."
@@ -230,10 +308,11 @@ def predict():
     img_file.save(img_path)
 
     try:
-        img = image.load_img(img_path, target_size=(128, 128))
-        img_array = image.img_to_array(img)
-        img_array = np.expand_dims(img_array, axis=0) / 255.0
-        prediction = model.predict(img_array, verbose=0)
+        img = Image.open(img_path).convert("RGB").resize(MODEL_IMAGE_SIZE)
+        img_array = np.asarray(img, dtype=np.float32)
+        img_array = np.expand_dims(img_array, axis=0)
+        img_array = preprocess_for_model(img_array)
+        prediction = model.predict(img_array)
         probs = prediction[0]
         class_idx = int(np.argmax(probs))
         blood_type = class_labels.get(class_idx, "Unknown")
